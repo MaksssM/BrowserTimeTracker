@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Nebula Dashboard</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<div class="container">
+			<div class="left-column">
+				<header class="header">
+					<h1 class="title">Nebula</h1>
+					<div class="controls">
+						<select id="period-select" title="Период">
+							<option value="today">Сегодня</option>
+							<option value="week" selected>Неделя</option>
+							<option value="month">Месяц</option>
+						</select>
+						<button id="theme-button" title="Сменить тему"></button>
+						<button id="pause-button" title="Пауза"></button>
+					</div>
+				</header>
+
+				<div class="card card-live">
+					<div class="card-header">
+						<h2 class="card-title">Текущая активность</h2>
+						<img id="live-favicon" src="" alt="" />
+					</div>
+					<div class="card-content">
+						<p id="live-hostname">Откройте вкладку...</p>
+						<h3 id="live-timer">00:00:00</h3>
+						<p id="live-today-total">Всего сегодня: ...</p>
+					</div>
+				</div>
+
+				<div class="card card-sites">
+					<h2 class="card-title">Топ сайтов за период</h2>
+					<div class="card-content" id="sites-list-container">
+						<p class="placeholder">Загрузка данных...</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="right-column">
+				<div class="card card-trend">
+					<div class="card-header">
+						<h2 class="card-title" id="summary-title">Тренд за неделю</h2>
+						<div class="summary-info">
+							<p id="summary-time">...</p>
+							<p id="comparison-insight">...</p>
+						</div>
+					</div>
+					<div class="card-content">
+						<canvas id="trend-chart"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script src="lib/chart.umd.min.js"></script>
+		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
+		<script src="popup.js"></script>
+	</body>
+</html>
