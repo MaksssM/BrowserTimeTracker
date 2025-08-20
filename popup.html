@@ -1,74 +1,133 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<title>Monolith Dashboard</title>
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link
-			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-			rel="stylesheet"
-		/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Статистика Активности</title>
 		<link rel="stylesheet" href="style.css" />
 	</head>
 	<body>
+		<div class="aurora-1"></div>
+		<div class="aurora-2"></div>
+
 		<div class="container">
 			<header class="header">
-				<h1 class="title">Monolith</h1>
+				<h1 class="title" data-i18n-key="headerTitle">Статистика</h1>
 				<div class="controls">
-					<select id="period-select" title="Период">
-						<option value="today">Сегодня</option>
-						<option value="week" selected>Неделя</option>
-						<option value="month">Месяц</option>
-						<option value="year">Год</option>
-						<!-- ДОБАВЛЕНО -->
+					<select id="period-select">
+						<option value="today" data-i18n-key="periodToday">Сегодня</option>
+						<option value="week" data-i18n-key="periodWeek">Эта неделя</option>
+						<option value="month" data-i18n-key="periodMonth">
+							Этот месяц
+						</option>
+						<option value="year" data-i18n-key="periodYear">Этот год</option>
 					</select>
-					<div id="theme-control" class="theme-control">
-						<button id="theme-button" title="Сменить тему"></button>
-						<div id="theme-menu"></div>
-					</div>
-					<button id="pause-button" title="Пауза"></button>
+
+					<!-- Новая кнопка выбора языка -->
+					<button id="lang-button" title="Сменить язык"></button>
+					<div id="lang-menu"></div>
+
+					<button id="theme-button" data-i18n-key-title="tooltipTheme">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								d="M12 2.25a.75.75 0 01.75.75v.518a13.535 13.535 0 015.65 2.181.75.75 0 01-.53 1.321A12.036 12.036 0 0012 6a12.036 12.036 0 00-5.87 1.27.75.75 0 01-.53-1.32A13.535 13.535 0 0111.25 2.768V2.25a.75.75 0 01.75-.75zM4.533 8.243A13.545 13.545 0 013 12a13.545 13.545 0 011.533 3.757.75.75 0 01-1.255.787A15.045 15.045 0 001.5 12c0-2.425.57-4.722 1.588-6.79.467-.954 1.683-.902 2.106.088a.75.75 0 01-.762 1.045zM21.22 7.21a.75.75 0 01.762 1.045 15.045 15.045 0 01-1.588 6.79.75.75 0 11-1.255-.787A13.545 13.545 0 0021 12a13.545 13.545 0 00-1.533-3.757c-.424-1.028.74-1.848 2.106-.088a.75.75 0 01-.353-.944zM12 1.5a.75.75 0 01.75.75v19.5a.75.75 0 01-1.5 0V2.25A.75.75 0 0112 1.5z"
+							/>
+						</svg>
+					</button>
+					<button id="pause-button" data-i18n-key-title="tooltipPause">
+						<svg
+							class="pause"
+							xmlns="http://www.w.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M6.75 5.25a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H6.75zm8.25 0a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H15z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+						<svg
+							class="play"
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.648c1.295.742 1.295 2.545 0 3.286L7.279 20.99c-1.25.717-2.779-.217-2.779-1.643V5.653z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</button>
+
+					<div id="theme-menu"></div>
 				</div>
 			</header>
 
-			<main class="main-grid">
-				<div class="card card-live">
+			<div class="main-grid">
+				<div id="live" class="card">
 					<div class="card-header">
-						<h2 class="card-title">Текущая сессия</h2>
-						<img id="live-favicon" src="" alt="" />
+						<h3 class="card-title" data-i18n-key="cardTitleLive">
+							Сейчас активно
+						</h3>
 					</div>
 					<div class="card-content">
-						<p id="live-hostname">...</p>
-						<h3 id="live-timer">00:00:00</h3>
+						<div class="live-header">
+							<img id="live-favicon" src="" alt="" />
+							<p id="live-hostname" data-i18n-key="statusLoading">
+								Загрузка...
+							</p>
+						</div>
+						<h2 id="live-timer">00:00:00</h2>
 					</div>
 				</div>
 
-				<div class="card card-summary">
+				<div id="summary" class="card">
 					<div class="card-header">
-						<h2 class="card-title" id="summary-title">Всего за неделю</h2>
+						<h3 class="card-title" data-i18n-key="cardTitleSummary">
+							Общая сводка
+						</h3>
+					</div>
+					<div class="card-content">
+						<h3 id="summary-title"></h3>
+						<h2 id="summary-time">00:00:00</h2>
 						<p id="comparison-insight">...</p>
 					</div>
+				</div>
+
+				<div id="sites" class="card">
+					<div class="card-header">
+						<h3 class="card-title" data-i18n-key="cardTitleSites">Топ Сайты</h3>
+					</div>
 					<div class="card-content">
-						<h3 id="summary-time">...</h3>
+						<div id="sites-list-container"></div>
 					</div>
 				</div>
 
-				<div class="card card-sites">
-					<h2 class="card-title">Топ сайтов</h2>
-					<div class="card-content" id="sites-list-container"></div>
-				</div>
-
-				<div class="card card-trend">
-					<h2 class="card-title">Тренд активности</h2>
+				<div id="trend" class="card">
+					<div class="card-header">
+						<h3 class="card-title" data-i18n-key="cardTitleTrend">
+							Тренд активности
+						</h3>
+					</div>
 					<div class="card-content">
 						<canvas id="trend-chart"></canvas>
 					</div>
 				</div>
-			</main>
+			</div>
 		</div>
 
+		<!-- Подключение скриптов в правильном порядке! -->
 		<script src="lib/chart.umd.min.js"></script>
 		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
+		<script src="translations.js"></script>
+		<!-- Сначала переводы -->
 		<script src="popup.js"></script>
+		<!-- Потом основной скрипт -->
 	</body>
 </html>
