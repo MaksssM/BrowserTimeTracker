@@ -12,11 +12,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		{ id: 'solar', name: 'Solar' },
 	]
 
-	// --- Элементы UI ---
 	const periodSelect = document.getElementById('period-select')
 	const themeButton = document.getElementById('theme-button')
 	const pauseButton = document.getElementById('pause-button')
-	const trendChartCtx = document.getElementById('trend-chart').getContext('2d')
+	let trendChartCtx
 
 	const liveHostname = document.getElementById('live-hostname'),
 		liveTimer = document.getElementById('live-timer'),
@@ -27,12 +26,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const sitesListContainer = document.getElementById('sites-list-container')
 
 	let trendChart,
-		allRecords = []
+		dailyStats = {},
+		liveTimerInterval = null // Переменная для управления таймером
 
-	// --- Логика тем ---
 	const applyTheme = themeId => {
 		document.body.dataset.theme = themeId
-		if (allRecords.length > 0) updateDashboard()
+		updateDashboard()
 	}
 	const buildThemeMenu = () => {
 		const menu = document.getElementById('theme-menu')
@@ -62,70 +61,88 @@ document.addEventListener('DOMContentLoaded', async () => {
 		}
 	})
 
-	// --- Остальная логика ---
 	const applyPauseState = isPaused =>
 		document.body.classList.toggle('paused', isPaused)
-	const formatHMS = s => new Date(s * 1000).toISOString().slice(11, 19)
-	const getStartOfDay = d =>
-		new Date(d.getFullYear(), d.getMonth(), d.getDate())
-	const getStartOfWeek = d => {
-		const date = new Date(d)
-		const day = date.getDay()
-		const diff = date.getDate() - day + (day === 0 ? -6 : 1)
-		return getStartOfDay(new Date(date.setDate(diff)))
-	}
-	const getStartOfMonth = d => new Date(d.getFullYear(), d.getMonth(), 1)
 
-	const getFilteredRecords = () => {
-		const period = periodSelect.value
-		const now = new Date()
-		let startDate, prevStartDate, title
-		if (period === 'today') {
-			startDate = getStartOfDay(now)
-			prevStartDate = getStartOfDay(
-				new Date(new Date().setDate(now.getDate() - 1))
-			)
-			title = 'Всего за сегодня'
-		} else if (period === 'week') {
-			startDate = getStartOfWeek(now)
-			prevStartDate = getStartOfWeek(
-				new Date(new Date().setDate(now.getDate() - 7))
-			)
-			title = 'Всего за неделю'
-		} else {
-			startDate = getStartOfMonth(now)
-			prevStartDate = getStartOfMonth(
-				new Date(new Date().setMonth(now.getMonth() - 1))
-			)
-			title = 'Всего за месяц'
+	const formatHMS = s => {
+		const hours = Math.floor(s / 3600)
+			.toString()
+			.padStart(2, '0')
+		const minutes = Math.floor((s % 3600) / 60)
+			.toString()
+			.padStart(2, '0')
+		const seconds = Math.floor(s % 60)
+			.toString()
+			.padStart(2, '0')
+		return `${hours}:${minutes}:${seconds}`
+	}
+
+	const getRecordsForPeriod = (startDate, endDate = new Date()) => {
+		const records = {}
+		const startKey = startDate.toISOString().slice(0, 10)
+		const endKey = endDate.toISOString().slice(0, 10)
+
+		for (const dayKey in dailyStats) {
+			if (dayKey >= startKey && dayKey <= endKey) {
+				for (const host in dailyStats[dayKey]) {
+					records[host] = (records[host] || 0) + dailyStats[dayKey][host]
+				}
+			}
 		}
-		summaryTitle.textContent = title
-		const currentPeriodRecords = allRecords.filter(
-			r => r.timestamp * 1000 >= startDate.getTime()
-		)
-		const prevPeriodRecords = allRecords.filter(
-			r =>
-				r.timestamp * 1000 >= prevStartDate.getTime() &&
-				r.timestamp * 1000 < startDate.getTime()
-		)
-		return { currentPeriodRecords, prevPeriodRecords }
+		return records
 	}
 
 	const updateDashboard = () => {
-		const { currentPeriodRecords, prevPeriodRecords } = getFilteredRecords()
+		const period = periodSelect.value
+		const now = new Date()
+		let startDate, prevStartDate, title
+
+		if (period === 'today') {
+			startDate = new Date(now.setHours(0, 0, 0, 0))
+			prevStartDate = new Date(new Date().setDate(now.getDate() - 1))
+			prevStartDate.setHours(0, 0, 0, 0)
+			title = 'Всего за сегодня'
+		} else if (period === 'week') {
+			const dayOfWeek = now.getDay()
+			startDate = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+			)
+			prevStartDate = new Date(
+				new Date(startDate).setDate(startDate.getDate() - 7)
+			)
+			title = 'Всего за неделю'
+		} else if (period === 'month') {
+			startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+			const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+			prevStartDate = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 1)
+			title = 'Всего за месяц'
+		} else {
+			// year
+			startDate = new Date(now.getFullYear(), 0, 1)
+			prevStartDate = new Date(new Date().setFullYear(now.getFullYear() - 1))
+			title = 'Всего за год'
+		}
+		summaryTitle.textContent = title
+
+		const currentPeriodRecords = getRecordsForPeriod(startDate)
+		const prevPeriodRecords = getRecordsForPeriod(prevStartDate, startDate)
+
 		renderSummary(currentPeriodRecords, prevPeriodRecords)
 		renderSitesList(currentPeriodRecords)
-		renderTrendChart(currentPeriodRecords)
+		renderTrendChart(startDate)
 	}
 
 	function renderSummary(records, prevRecords) {
-		summaryTime.textContent = formatHMS(records.length)
-		const prevTime = prevRecords.length
+		const totalTime = Object.values(records).reduce((a, b) => a + b, 0)
+		summaryTime.textContent = formatHMS(totalTime)
+		const prevTime = Object.values(prevRecords).reduce((a, b) => a + b, 0)
 		if (prevTime === 0) {
 			comparisonInsight.textContent = '...'
 			return
 		}
-		const percentageChange = ((records.length - prevTime) / prevTime) * 100
+		const percentageChange = ((totalTime - prevTime) / prevTime) * 100
 		const trend = percentageChange >= 0 ? '↑' : '↓'
 		const trendClass = percentageChange >= 0 ? 'trend-up' : 'trend-down'
 		comparisonInsight.innerHTML = `<span class="${trendClass}">${trend}${Math.abs(
@@ -134,43 +151,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 	}
 
 	function renderSitesList(records) {
-		const dataBySite = {}
-		records.forEach(r => {
-			dataBySite[r.host] = (dataBySite[r.host] || 0) + 1
-		})
-		const sortedSites = Object.entries(dataBySite)
-			.sort((a, b) => b[1] - a[1])
-			.slice(0, 7)
+		const sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
+
 		sitesListContainer.innerHTML =
 			sortedSites.length > 0
 				? sortedSites
 						.map(
-							([host, time]) => `
-            <div class="site-entry" data-host="${host}"><span class="site-name">${host}</span><span class="site-time">${formatHMS(
-								time
-							)}</span></div>`
+							([host, time]) =>
+								`<div class="site-entry"><span class="site-name">${host}</span><span class="site-time">${formatHMS(
+									time
+								)}</span></div>`
 						)
 						.join('')
 				: `<p class="placeholder">Нет данных.</p>`
 	}
 
-	function renderTrendChart(records) {
+	function renderTrendChart(startDate) {
+		if (!trendChartCtx) return
 		if (trendChart) trendChart.destroy()
-		const dataByDay = {}
-		records.forEach(r => {
-			const day = getStartOfDay(new Date(r.timestamp * 1000))
-				.toISOString()
-				.split('T')[0]
-			dataByDay[day] = (dataByDay[day] || 0) + 1
-		})
-		const labels = Object.keys(dataByDay).sort()
-		const data = labels.map(label => dataByDay[label])
+
+		const labels = [],
+			data = []
+		const period = periodSelect.value
+
+		if (period === 'today') {
+			// ...
+		} else if (period === 'year') {
+			const monthLabels = [
+				'Янв',
+				'Фев',
+				'Мар',
+				'Апр',
+				'Май',
+				'Июн',
+				'Июл',
+				'Авг',
+				'Сен',
+				'Окт',
+				'Ноя',
+				'Дек',
+			]
+			const monthlyData = Array(12).fill(0)
+			for (const dayKey in dailyStats) {
+				if (dayKey.startsWith(startDate.getFullYear().toString())) {
+					const month = new Date(dayKey).getMonth()
+					monthlyData[month] += Object.values(dailyStats[dayKey]).reduce(
+						(a, b) => a + b,
+						0
+					)
+				}
+			}
+			labels.push(...monthLabels)
+			data.push(...monthlyData)
+		} else {
+			// week or month
+			let numDays =
+				period === 'week'
+					? 7
+					: new Date(
+							startDate.getFullYear(),
+							startDate.getMonth() + 1,
+							0
+					  ).getDate()
+			const dateIterator = new Date(startDate)
+			for (let i = 0; i < numDays; i++) {
+				const dayKey = dateIterator.toISOString().slice(0, 10)
+				labels.push(dayKey)
+				const dayTotal = dailyStats[dayKey]
+					? Object.values(dailyStats[dayKey]).reduce((a, b) => a + b, 0)
+					: 0
+				data.push(dayTotal)
+				dateIterator.setDate(dateIterator.getDate() + 1)
+			}
+		}
 
 		const styles = getComputedStyle(document.body)
 		const accentColor = styles.getPropertyValue('--accent').trim()
 		const textColor = styles.getPropertyValue('--text-secondary').trim()
 		const gridColor = styles.getPropertyValue('--card-border').trim()
-
 		const gradient = trendChartCtx.createLinearGradient(
 			0,
 			0,
@@ -193,7 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 						tension: 0.4,
 						pointBackgroundColor: accentColor,
 						pointBorderWidth: 0,
-						pointRadius: data.length < 15 ? 4 : 0,
+						pointRadius: data.length < 31 ? 4 : 0,
 						pointHoverRadius: 6,
 					},
 				],
@@ -223,10 +281,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 						displayColors: false,
 						callbacks: {
 							title: ctx =>
-								new Date(ctx[0].label).toLocaleDateString('ru-RU', {
-									day: 'numeric',
-									month: 'long',
-								}),
+								period === 'year'
+									? labels[ctx[0].dataIndex]
+									: new Date(ctx[0].label).toLocaleDateString('ru-RU', {
+											day: 'numeric',
+											month: 'long',
+									  }),
 							label: ctx => `Всего: ${formatHMS(ctx.raw)}`,
 						},
 					},
@@ -235,83 +295,70 @@ document.addEventListener('DOMContentLoaded', async () => {
 		})
 	}
 
-	const calculateCurrentSessionTime = (host, records) => {
-		let sessionTime = 0
-		if (!host || records.length === 0) return 0
-		const now = Math.floor(Date.now() / 1000)
-		const lastRecord = records[records.length - 1]
-		if (lastRecord.host !== host || now - lastRecord.timestamp > 2) return 0
+	// ИЗМЕНЕННАЯ ФУНКЦИЯ
+	function updateLiveActivity(currentState) {
+		clearInterval(liveTimerInterval) // Очищаем старый таймер
 
-		for (let i = records.length - 1; i >= 0; i--) {
-			const record = records[i]
-			const prevTimestamp =
-				i > 0 ? records[i - 1].timestamp : record.timestamp - 1
-			if (record.host !== host || record.timestamp - prevTimestamp > 2) break
-			sessionTime++
-		}
-		return sessionTime
-	}
+		const { isPaused, currentHost, currentSessionStart } = currentState
 
-	// --- ФИНАЛЬНАЯ, АРХИТЕКТУРНО ПРАВИЛЬНАЯ ЛОГИКА ---
-	const updateLiveActivity = async () => {
-		const { isPaused } = await chrome.storage.local.get({ isPaused: false })
 		if (isPaused) {
 			liveTimer.textContent = 'На паузе'
 			liveHostname.textContent = '...'
 			liveFavicon.src = ''
 			return
 		}
-		try {
-			const [activeTab] = await chrome.tabs.query({
-				active: true,
-				lastFocusedWindow: true,
-			})
-			if (activeTab && activeTab.url && activeTab.url.startsWith('http')) {
-				const host = new URL(activeTab.url).hostname
-				liveHostname.textContent = host
-				liveFavicon.src = `https://www.google.com/s2/favicons?sz=32&domain_url=${host}`
-				const sessionTime = calculateCurrentSessionTime(host, allRecords)
+
+		if (currentHost && currentSessionStart) {
+			liveHostname.textContent = currentHost
+			liveFavicon.src = `https://www.google.com/s2/favicons?sz=32&domain_url=${currentHost}`
+
+			// Запускаем новый таймер для обновления счетчика в реальном времени
+			liveTimerInterval = setInterval(() => {
+				const sessionTime = Math.floor(Date.now() / 1000) - currentSessionStart
 				liveTimer.textContent = formatHMS(sessionTime)
-			} else {
-				liveHostname.textContent = 'Нет активной вкладки'
-				liveTimer.textContent = '...'
-				liveFavicon.src = ''
-			}
-		} catch (e) {
-			/* Игнорируем */
+			}, 1000)
+		} else {
+			liveHostname.textContent = 'Нет активной вкладки'
+			liveTimer.textContent = '...'
+			liveFavicon.src = ''
 		}
 	}
 
 	const init = async () => {
-		const { timeRecords, isPaused } = await chrome.storage.local.get({
-			timeRecords: [],
-			isPaused: false,
-		})
+		trendChartCtx = document.getElementById('trend-chart').getContext('2d')
+
+		const { isPaused } = await chrome.storage.local.get({ isPaused: false })
 		const { theme } = await chrome.storage.sync.get({ theme: 'monolith' })
 
-		allRecords = timeRecords || []
+		const data = await chrome.storage.local.get(['dailyStats', 'currentState'])
+		dailyStats = data.dailyStats || {}
+		const currentState = data.currentState || {}
+
 		themeButton.innerHTML = ICONS.theme
 		pauseButton.innerHTML = ICONS.pause + ICONS.play
-
 		applyTheme(theme)
 		applyPauseState(isPaused)
 		updateDashboard()
-		updateLiveActivity()
+		updateLiveActivity(currentState)
 
 		periodSelect.addEventListener('change', updateDashboard)
 		pauseButton.addEventListener('click', async () => {
-			let { isPaused } = await chrome.storage.local.get({ isPaused: false })
-			isPaused = !isPaused
-			await chrome.storage.local.set({ isPaused })
-			applyPauseState(isPaused)
+			const { isPaused } = await chrome.storage.local.get({ isPaused: false })
+			await chrome.storage.local.set({ isPaused: !isPaused })
 		})
 
-		// САМОЕ ВАЖНОЕ: слушаем изменения из background.js
 		chrome.storage.onChanged.addListener((changes, area) => {
-			if (area === 'local' && changes.timeRecords) {
-				allRecords = changes.timeRecords.newValue
-				updateDashboard()
-				updateLiveActivity()
+			if (area === 'local') {
+				if (changes.dailyStats) {
+					dailyStats = changes.dailyStats.newValue
+					updateDashboard()
+				}
+				if (changes.currentState) {
+					updateLiveActivity(changes.currentState.newValue)
+				}
+				if (changes.isPaused) {
+					applyPauseState(changes.isPaused.newValue)
+				}
 			}
 		})
 	}
