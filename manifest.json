@@ -1,9 +1,10 @@
 {
 	"manifest_version": 3,
-	"name": "Zenith Dashboard",
-	"version": "6.0",
-	"description": "Элегантная аналитическая панель вашей цифровой активности.",
-	"permissions": ["tabs", "storage", "idle"],
+	"name": "Zenith Dashboard Pro",
+	"version": "7.0",
+	"description": "Элегантная аналитическая панель вашей цифровой активности с расширенной статистикой",
+
+	"permissions": ["tabs", "storage", "alarms"],
 	"background": {
 		"service_worker": "background.js"
 	},
@@ -11,6 +12,12 @@
 		"default_popup": "popup.html"
 	},
 	"content_security_policy": {
-		"extension_pages": "script-src 'self'; object-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com;"
-	}
+		"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+	},
+	"web_accessible_resources": [
+		{
+			"resources": ["lib/*"],
+			"matches": ["<all_urls>"]
+		}
+	]
 }
