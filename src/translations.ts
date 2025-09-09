@@ -1,4 +1,12 @@
-const translations = {
+type Translation = {
+	[key: string]: string
+}
+
+type Translations = {
+	[key: string]: Translation
+}
+
+export const translations: Translations = {
 	ru: {
 		headerTitle: 'Статистика',
 		periodToday: 'Сегодня',

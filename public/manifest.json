@@ -3,10 +3,10 @@
 	"name": "Zenith Dashboard Pro",
 	"version": "7.0",
 	"description": "Элегантная аналитическая панель вашей цифровой активности с расширенной статистикой",
-
 	"permissions": ["tabs", "storage", "alarms"],
 	"background": {
-		"service_worker": "background.js"
+		"service_worker": "background.js",
+		"type": "module"
 	},
 	"action": {
 		"default_popup": "popup.html"

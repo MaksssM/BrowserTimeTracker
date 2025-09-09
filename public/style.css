@@ -768,3 +768,20 @@ body.paused #pause-button .play {
 		transform: rotate(360deg);
 	}
 }
+
+/* НОВЫЕ СТИЛИ */
+.sites-toggle {
+	flex-shrink: 0;
+	margin-top: 0;
+}
+
+#sites .card-header {
+	position: relative;
+	flex-wrap: wrap;
+	padding-bottom: 10px;
+}
+
+#sites .card-header .card-title {
+	flex-basis: 100%;
+	margin-bottom: 10px;
+}

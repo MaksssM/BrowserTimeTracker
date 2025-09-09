@@ -1,14 +1,25 @@
 ;(() => {
-	let dailyStats = {}
-	let currentState = {
+	interface DailyStats {
+		[date: string]: {
+			[hostname: string]: number
+		}
+	}
+
+	interface CurrentState {
+		currentHost: string | null
+		currentSessionStart: number | null
+	}
+
+	let dailyStats: DailyStats = {}
+	let currentState: CurrentState = {
 		currentHost: null,
 		currentSessionStart: null,
 	}
 	let isPaused = false
-	let saveInterval = null
-	let lastProcessedDate = null
+	let saveInterval: number | null = null
+	let lastProcessedDate: string | null = null
 
-	const getHost = url => {
+	const getHost = (url: string): string | null => {
 		try {
 			const urlObj = new URL(url)
 			return urlObj.hostname.replace('www.', '')
@@ -17,13 +28,11 @@
 		}
 	}
 
-	// Функция для получения ключа даты (YYYY-MM-DD)
-	const getDateKey = (date = new Date()) => {
+	const getDateKey = (date: Date = new Date()): string => {
 		return date.toISOString().slice(0, 10)
 	}
 
-	// Функция для получения времени начала дня (00:00:00)
-	const getStartOfDay = (date = new Date()) => {
+	const getStartOfDay = (date: Date = new Date()): Date => {
 		const start = new Date(date)
 		start.setHours(0, 0, 0, 0)
 		return start
@@ -61,12 +70,10 @@
 			return
 		}
 
-		// Проверяем, что сессия началась сегодня (после 00:00)
 		const sessionStartDate = new Date(currentState.currentSessionStart * 1000)
 		const startOfDay = getStartOfDay()
 
 		if (sessionStartDate < startOfDay) {
-			// Сессия началась вчера, обрезаем до начала сегодняшнего дня
 			currentState.currentSessionStart = Math.floor(startOfDay.getTime() / 1000)
 		}
 
@@ -123,7 +130,6 @@
 				saveCurrentSession()
 			}
 
-			// Устанавливаем начало сессии на текущее время, но не раньше 00:00 сегодня
 			const now = Date.now() / 1000
 			const startOfDay = Math.floor(getStartOfDay().getTime() / 1000)
 			currentState.currentSessionStart = Math.max(now, startOfDay)
@@ -136,25 +142,19 @@
 		}
 	}
 
-	// Функция для миграции старых данных (если нужно)
 	const migrateOldData = () => {
 		const today = getDateKey()
 		let needsMigration = false
-
-		// Проверяем, есть ли данные за сегодня
 		if (!dailyStats[today]) {
-			// Создаем пустую запись для сегодняшнего дня
 			dailyStats[today] = {}
 			needsMigration = true
 		}
-
 		if (needsMigration) {
 			chrome.storage.local.set({ dailyStats })
 			console.log('Data migration completed')
 		}
 	}
 
-	// Очистка старых данных (более 90 дней)
 	const cleanupOldData = () => {
 		const ninetyDaysAgo = new Date()
 		ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
@@ -169,26 +169,22 @@
 		console.log('Cleaned up old data')
 	}
 
-	// Ежедневная проверка на новый день
 	const checkNewDay = async () => {
 		const today = getDateKey()
 
 		if (lastProcessedDate !== today) {
-			// Новый день - сохраняем текущую сессию и обновляем дату
 			if (currentState.currentHost) {
 				saveCurrentSession()
 				currentState.currentHost = null
 				currentState.currentSessionStart = null
 				chrome.storage.local.set({ currentState })
 			}
-
 			lastProcessedDate = today
 			await chrome.storage.local.set({ lastProcessedDate: today })
 			console.log('New day started:', today)
 		}
 	}
 
-	// Слушатели событий
 	chrome.runtime.onStartup.addListener(() => {
 		loadInitialData().then(() => {
 			checkNewDay()
@@ -198,7 +194,6 @@
 
 	chrome.runtime.onInstalled.addListener(details => {
 		if (details.reason === 'install') {
-			// При первой установке инициализируем данные для текущего дня
 			loadInitialData().then(() => {
 				const today = getDateKey()
 				dailyStats[today] = dailyStats[today] || {}
@@ -216,7 +211,7 @@
 	})
 
 	chrome.tabs.onActivated.addListener(updateActivity)
-	chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+	chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
 		if (changeInfo.status === 'complete' && tab.active) {
 			updateActivity()
 		}
@@ -242,15 +237,13 @@
 					}
 				}
 			}
-
 			if (changes.lastProcessedDate) {
 				lastProcessedDate = changes.lastProcessedDate.newValue
 			}
 		}
 	})
 
-	// Обработчик сообщений от popup
-	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+	chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 		if (request.type === 'GET_CURRENT_STATE') {
 			sendResponse({
 				dailyStats: dailyStats,
@@ -265,7 +258,7 @@
 		} else if (request.type === 'CLEAR_DATA') {
 			dailyStats = {}
 			const today = getDateKey()
-			dailyStats[today] = {} // Сохраняем структуру для текущего дня
+			dailyStats[today] = {}
 			chrome.storage.local.set({ dailyStats })
 			sendResponse({ success: true })
 		} else if (request.type === 'GET_DAY_START') {
@@ -276,7 +269,6 @@
 		return true
 	})
 
-	// Инициализация
 	loadInitialData().then(() => {
 		migrateOldData()
 		checkNewDay()
@@ -289,10 +281,7 @@
 			}, 15000)
 		}
 
-		// Ежедневная проверка в полночь
-		setInterval(checkNewDay, 60000) // Проверяем каждую минуту
-
-		// Еженедельная очистка старых данных
-		setInterval(cleanupOldData, 7 * 24 * 60 * 60 * 1000) // Раз в 7 дней
+		setInterval(checkNewDay, 60000)
+		setInterval(cleanupOldData, 7 * 24 * 60 * 60 * 1000)
 	})
 })()

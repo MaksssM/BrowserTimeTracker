@@ -1,10 +1,33 @@
+import { translations } from './translations'
+import { Chart, registerables, TooltipItem, ChartType } from 'chart.js'
+Chart.register(...registerables)
+
+// Type definitions
+interface DailyStats {
+	[date: string]: {
+		[hostname: string]: number
+	}
+}
+
+interface CurrentState {
+	currentHost?: string | null
+	currentSessionStart?: number | null
+	isPaused: boolean
+}
+
+interface SyncData {
+	theme: string
+	language: string
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-	let dailyStats = {}
-	let currentState = {}
-	let liveTimerInterval = null
+	let dailyStats: DailyStats = {}
+	let currentState: CurrentState = { isPaused: false }
+	let liveTimerInterval: number | null = null
 	let currentLang = 'en'
 	let currentChartType = 'daily'
-	let activityChartInstance = null
+	let currentSitesPeriod = 'daily' // <-- Новая переменная для периода сайтов
+	let activityChartInstance: Chart | null = null
 
 	const THEMES = [
 		{ id: 'monolith', key: 'themeMonolith' },
@@ -22,33 +45,49 @@ document.addEventListener('DOMContentLoaded', () => {
 		{ id: 'fr', name: 'Français' },
 	]
 
-	// DOM элементы
 	const elements = {
-		periodSelect: document.getElementById('period-select'),
-		themeButton: document.getElementById('theme-button'),
-		pauseButton: document.getElementById('pause-button'),
-		exportButton: document.getElementById('export-button'),
-		settingsButton: document.getElementById('settings-button'),
-		themeMenu: document.getElementById('theme-menu'),
-		langButton: document.getElementById('lang-button'),
-		langMenu: document.getElementById('lang-menu'),
-		liveHostname: document.getElementById('live-hostname'),
-		liveTimer: document.getElementById('live-timer'),
-		liveFavicon: document.getElementById('live-favicon'),
-		summaryTitle: document.getElementById('summary-title'),
-		summaryTime: document.getElementById('summary-time'),
-		comparisonInsight: document.getElementById('comparison-insight'),
-		sitesListContainer: document.getElementById('sites-list-container'),
-		errorContainer: document.getElementById('error-container'),
-		sitesCount: document.getElementById('sites-count'),
-		chartDaily: document.getElementById('chart-daily'),
-		chartWeekly: document.getElementById('chart-weekly'),
-		chartMonthly: document.getElementById('chart-monthly'),
-		activityChart: document.getElementById('activity-chart'),
+		periodSelect: document.getElementById('period-select') as HTMLSelectElement,
+		themeButton: document.getElementById('theme-button') as HTMLButtonElement,
+		pauseButton: document.getElementById('pause-button') as HTMLButtonElement,
+		exportButton: document.getElementById('export-button') as HTMLButtonElement,
+		settingsButton: document.getElementById(
+			'settings-button'
+		) as HTMLButtonElement,
+		themeMenu: document.getElementById('theme-menu') as HTMLDivElement,
+		langButton: document.getElementById('lang-button') as HTMLButtonElement,
+		langMenu: document.getElementById('lang-menu') as HTMLDivElement,
+		liveHostname: document.getElementById(
+			'live-hostname'
+		) as HTMLParagraphElement,
+		liveTimer: document.getElementById('live-timer') as HTMLHeadingElement,
+		liveFavicon: document.getElementById('live-favicon') as HTMLImageElement,
+		summaryTitle: document.getElementById(
+			'summary-title'
+		) as HTMLHeadingElement,
+		summaryTime: document.getElementById('summary-time') as HTMLHeadingElement,
+		comparisonInsight: document.getElementById(
+			'comparison-insight'
+		) as HTMLParagraphElement,
+		sitesListContainer: document.getElementById(
+			'sites-list-container'
+		) as HTMLDivElement,
+		errorContainer: document.getElementById(
+			'error-container'
+		) as HTMLDivElement,
+		sitesCount: document.getElementById('sites-count') as HTMLSpanElement,
+		chartDaily: document.getElementById('chart-daily') as HTMLButtonElement,
+		chartWeekly: document.getElementById('chart-weekly') as HTMLButtonElement,
+		chartMonthly: document.getElementById('chart-monthly') as HTMLButtonElement,
+		// Новые элементы для кнопок сайтов
+		sitesDaily: document.getElementById('sites-daily') as HTMLButtonElement,
+		sitesWeekly: document.getElementById('sites-weekly') as HTMLButtonElement,
+		sitesMonthly: document.getElementById('sites-monthly') as HTMLButtonElement,
+		activityChart: document.getElementById(
+			'activity-chart'
+		) as HTMLCanvasElement,
 	}
 
-	// Форматирование времени
-	const formatHMS = s => {
+	const formatHMS = (s: number): string => {
 		s = Math.max(0, Math.floor(s))
 		const hours = Math.floor(s / 3600)
 			.toString()
@@ -62,31 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
 		return `${hours}:${minutes}:${seconds}`
 	}
 
-	const formatTimeShort = s => {
-		s = Math.max(0, Math.floor(s))
-		if (s < 60) return `${s}s`
-		if (s < 3600) return `${Math.floor(s / 60)}m`
-		if (s < 86400) return `${Math.floor(s / 3600)}h`
-		return `${Math.floor(s / 86400)}d`
-	}
-
-	// Форматирование доменного имени
-	const formatHostname = hostname => {
+	const formatHostname = (hostname: string | null | undefined): string => {
 		if (!hostname) return ''
-
-		// Убираем www. и протоколы
 		let cleanHost = hostname.replace(/^www\./, '').replace(/^https?:\/\//, '')
-
-		// Обрезаем слишком длинные имена
 		if (cleanHost.length > 25) {
 			cleanHost = cleanHost.substring(0, 22) + '...'
 		}
-
 		return cleanHost
 	}
 
-	// Показать ошибку
-	const showError = message => {
+	const showError = (message: string) => {
 		elements.errorContainer.textContent = message
 		elements.errorContainer.style.display = 'block'
 		setTimeout(() => {
@@ -94,35 +118,31 @@ document.addEventListener('DOMContentLoaded', () => {
 		}, 5000)
 	}
 
-	// Применение темы
-	const applyTheme = themeId => {
+	const applyTheme = (themeId: string) => {
 		document.body.dataset.theme = themeId
-		updateDashboard(true)
+		updateDashboard()
 	}
 
-	// Инициализация
 	const init = async () => {
 		try {
-			const syncData = await chrome.storage.sync.get({
+			const syncData = (await chrome.storage.sync.get({
 				theme: 'monolith',
 				language: 'en',
-			})
+			})) as SyncData
 
 			chrome.runtime.sendMessage({ type: 'GET_CURRENT_STATE' }, response => {
 				if (chrome.runtime.lastError) {
 					showError(translations[currentLang].errorConnection)
 					return
 				}
-
 				dailyStats = response.dailyStats || {}
 				currentState = {
 					...response.currentState,
 					isPaused: response.isPaused || false,
 				}
-
 				document.body.classList.toggle('paused', currentState.isPaused)
 				setupUI(syncData)
-				updateDashboard(true)
+				updateDashboard()
 				startLiveUpdates()
 				renderActivityChart()
 			})
@@ -131,16 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	const setupUI = syncData => {
+	const setupUI = (syncData: SyncData) => {
 		setLanguage(syncData.language)
 		buildLangMenu()
 		applyTheme(syncData.theme)
 		buildThemeMenu()
 
-		elements.periodSelect.addEventListener('change', () =>
-			updateDashboard(true)
-		)
-
+		elements.periodSelect.addEventListener('change', () => updateDashboard())
 		elements.pauseButton.addEventListener('click', () => {
 			chrome.storage.local.get({ isPaused: false }, ({ isPaused }) => {
 				chrome.storage.local.set({ isPaused: !isPaused }, () => {
@@ -153,29 +170,29 @@ document.addEventListener('DOMContentLoaded', () => {
 			const dataStr = JSON.stringify(dailyStats, null, 2)
 			const dataUri =
 				'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-
 			const exportFileDefaultName = `zenith-stats-${new Date()
 				.toISOString()
 				.slice(0, 10)}.json`
-
 			const linkElement = document.createElement('a')
 			linkElement.setAttribute('href', dataUri)
 			linkElement.setAttribute('download', exportFileDefaultName)
 			linkElement.click()
 		})
 
-		// Обработчики для переключения графиков
-		elements.chartDaily.addEventListener('click', () => {
-			setChartType('daily')
-		})
-
-		elements.chartWeekly.addEventListener('click', () => {
-			setChartType('weekly')
-		})
-
-		elements.chartMonthly.addEventListener('click', () => {
+		elements.chartDaily.addEventListener('click', () => setChartType('daily'))
+		elements.chartWeekly.addEventListener('click', () => setChartType('weekly'))
+		elements.chartMonthly.addEventListener('click', () =>
 			setChartType('monthly')
-		})
+		)
+
+		// Новые обработчики для кнопок сайтов
+		elements.sitesDaily.addEventListener('click', () => setSitesPeriod('daily'))
+		elements.sitesWeekly.addEventListener('click', () =>
+			setSitesPeriod('weekly')
+		)
+		elements.sitesMonthly.addEventListener('click', () =>
+			setSitesPeriod('monthly')
+		)
 
 		elements.themeButton.addEventListener('click', e => {
 			e.stopPropagation()
@@ -190,17 +207,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 
 		document.addEventListener('click', e => {
+			const target = e.target as Node
 			if (
 				elements.themeMenu &&
-				!elements.themeMenu.contains(e.target) &&
-				e.target !== elements.themeButton
+				!elements.themeMenu.contains(target) &&
+				target !== elements.themeButton
 			) {
 				hideMenu(elements.themeMenu)
 			}
 			if (
 				elements.langMenu &&
-				!elements.langMenu.contains(e.target) &&
-				e.target !== elements.langButton
+				!elements.langMenu.contains(target) &&
+				target !== elements.langButton
 			) {
 				hideMenu(elements.langMenu)
 			}
@@ -221,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					document.body.classList.toggle('paused', currentState.isPaused)
 				}
 				if (needsFullRedraw) {
-					updateDashboard(true)
+					updateDashboard()
 					renderActivityChart()
 				}
 				startLiveUpdates()
@@ -229,7 +247,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 	}
 
-	const toggleMenu = menu => {
+	// Новая функция для установки периода сайтов
+	const setSitesPeriod = (period: string) => {
+		currentSitesPeriod = period
+		document.querySelectorAll('.sites-toggle button').forEach(btn => {
+			btn.classList.remove('active')
+		})
+		document.getElementById(`sites-${period}`)?.classList.add('active')
+		updateDashboard()
+	}
+
+	const toggleMenu = (menu: HTMLElement) => {
 		if (menu.classList.contains('show')) {
 			hideMenu(menu)
 		} else {
@@ -237,58 +265,90 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	const showMenu = menu => {
+	const showMenu = (menu: HTMLElement) => {
 		menu.classList.add('show')
 	}
 
-	const hideMenu = menu => {
+	const hideMenu = (menu: HTMLElement) => {
 		menu.classList.remove('show')
 	}
 
-	const updateDashboard = (forceRedraw = false) => {
+	// Функция `updateDashboard` теперь учитывает оба периода
+	const updateDashboard = () => {
 		const period = elements.periodSelect.value
 		const now = new Date()
-		let startDate, prevStartDate, titleKey
+		let startDate: Date, prevStartDate: Date, titleKey: string
+		let sitesStartDate: Date
 
-		if (period === 'today') {
-			startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-			prevStartDate = new Date(new Date().setDate(now.getDate() - 1))
-			titleKey = 'periodToday'
-		} else if (period === 'week') {
-			const dayOfWeek = now.getDay()
-			startDate = new Date(
-				now.getFullYear(),
-				now.getMonth(),
-				now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
-			)
-			prevStartDate = new Date(
-				new Date(startDate).setDate(startDate.getDate() - 7)
-			)
-			titleKey = 'periodWeek'
-		} else if (period === 'month') {
-			startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-			prevStartDate = new Date(new Date().setMonth(now.getMonth() - 1))
-			titleKey = 'periodMonth'
-		} else {
-			startDate = new Date(now.getFullYear(), 0, 1)
-			prevStartDate = new Date(new Date().setFullYear(now.getFullYear() - 1))
-			titleKey = 'periodYear'
+		// Логика для карточки "Общая сводка" (без изменений)
+		switch (period) {
+			case 'today':
+				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+				prevStartDate = new Date(new Date().setDate(now.getDate() - 1))
+				titleKey = 'periodToday'
+				break
+			case 'week':
+				const dayOfWeekSummary = now.getDay()
+				startDate = new Date(
+					now.getFullYear(),
+					now.getMonth(),
+					now.getDate() - dayOfWeekSummary + (dayOfWeekSummary === 0 ? -6 : 1)
+				)
+				prevStartDate = new Date(
+					new Date(startDate).setDate(startDate.getDate() - 7)
+				)
+				titleKey = 'periodWeek'
+				break
+			case 'month':
+				startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+				prevStartDate = new Date(new Date().setMonth(now.getMonth() - 1))
+				titleKey = 'periodMonth'
+				break
+			default: // year
+				startDate = new Date(now.getFullYear(), 0, 1)
+				prevStartDate = new Date(new Date().setFullYear(now.getFullYear() - 1))
+				titleKey = 'periodYear'
+		}
+
+		// Новая логика для определения периода "Топ Сайтов"
+		switch (currentSitesPeriod) {
+			case 'weekly':
+				const dayOfWeekSites = now.getDay()
+				sitesStartDate = new Date(
+					now.getFullYear(),
+					now.getMonth(),
+					now.getDate() - dayOfWeekSites + (dayOfWeekSites === 0 ? -6 : 1)
+				)
+				break
+			case 'monthly':
+				sitesStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
+				break
+			default: // daily
+				sitesStartDate = new Date(
+					now.getFullYear(),
+					now.getMonth(),
+					now.getDate()
+				)
+				break
 		}
 
 		elements.summaryTitle.textContent = `${
 			translations[currentLang].summaryPrefix
 		} ${translations[currentLang][titleKey].toLowerCase()}`
+
 		const currentPeriodRecords = getRecordsForPeriod(startDate)
 		const prevPeriodRecords = getRecordsForPeriod(prevStartDate, startDate)
+		const sitesRecords = getRecordsForPeriod(sitesStartDate)
+
 		renderSummary(currentPeriodRecords, prevPeriodRecords)
-		renderSitesList(currentPeriodRecords)
+		renderSitesList(sitesRecords)
 	}
 
-	const getRecordsForPeriod = (startDate, endDate = new Date()) => {
-		const records = {}
-		const startKey = startDate.toISOString().slice(0, 10)
-		const endKey = endDate.toISOString().slice(0, 10)
-
+	const getRecordsForPeriod = (
+		startDate: Date,
+		endDate: Date = new Date()
+	): { [host: string]: number } => {
+		const records: { [host: string]: number } = {}
 		const adjustedStartDate = new Date(startDate)
 		adjustedStartDate.setHours(0, 0, 0, 0)
 
@@ -296,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const dayDate = new Date(dayKey)
 			dayDate.setHours(0, 0, 0, 0)
 
-			if (dayDate >= adjustedStartDate && dayDate <= endDate) {
+			if (dayDate >= adjustedStartDate && dayDate < endDate) {
 				for (const host in dailyStats[dayKey]) {
 					records[host] = (records[host] || 0) + dailyStats[dayKey][host]
 				}
@@ -305,9 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		return records
 	}
 
-	function renderSummary(records, prevRecords) {
+	function renderSummary(
+		records: { [host: string]: number },
+		prevRecords: { [host: string]: number }
+	) {
 		const totalTime = Object.values(records).reduce((a, b) => a + b, 0)
-		elements.summaryTime.dataset.baseTime = totalTime
+		elements.summaryTime.dataset.baseTime = totalTime.toString()
 		elements.summaryTime.textContent = formatHMS(totalTime)
 
 		const prevTime = Object.values(prevRecords).reduce((a, b) => a + b, 0)
@@ -326,11 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		).toFixed(0)}%</span> ${translations[currentLang].comparedToPrevious}`
 	}
 
-	function renderSitesList(records) {
+	function renderSitesList(records: { [host: string]: number }) {
 		const sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
-		elements.sitesCount.textContent = sortedSites.length
+		// elements.sitesCount.textContent = sortedSites.length.toString() // Этот элемент удален из HTML
 
-		// Очищаем контейнер с анимацией
 		elements.sitesListContainer.style.opacity = '0'
 		elements.sitesListContainer.style.transform = 'translateY(10px)'
 
@@ -339,9 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				sortedSites.length > 0
 					? sortedSites
 							.map(([host, time], index) => {
-								// Обрезаем слишком длинные доменные имена
 								let displayHost = formatHostname(host)
-
 								return `
             <div class="site-entry" data-host="${host}">
               <span class="site-rank">${index + 1}</span>
@@ -354,7 +414,6 @@ document.addEventListener('DOMContentLoaded', () => {
 							.join('')
 					: `<p class="placeholder">${translations[currentLang].statusNoData}</p>`
 
-			// Плавное появление
 			setTimeout(() => {
 				elements.sitesListContainer.style.opacity = '1'
 				elements.sitesListContainer.style.transform = 'translateY(0)'
@@ -384,14 +443,11 @@ document.addEventListener('DOMContentLoaded', () => {
 			elements.liveFavicon.style.display = 'block'
 
 			const update = () => {
+				if (!currentSessionStart) return
 				const secondsElapsed = Date.now() / 1000 - currentSessionStart
-				// Таймер текущей сессии обновляется всегда, это правильно
 				elements.liveTimer.textContent = formatHMS(secondsElapsed)
 
-				// --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
-				// Обновляем общее время и список сайтов только если выбран период "Сегодня"
 				if (elements.periodSelect.value === 'today') {
-					// Обновляем общее время за сегодня
 					const baseTotalTime = parseInt(
 						elements.summaryTime.dataset.baseTime || '0',
 						10
@@ -400,10 +456,9 @@ document.addEventListener('DOMContentLoaded', () => {
 						baseTotalTime + secondsElapsed
 					)
 
-					// Ищем текущий сайт в списке и обновляем его время
 					const siteEntry = elements.sitesListContainer.querySelector(
 						`.site-entry[data-host="${currentHost}"] .site-time`
-					)
+					) as HTMLSpanElement
 					if (siteEntry) {
 						const baseSiteTime = parseInt(siteEntry.dataset.baseTime || '0', 10)
 						siteEntry.textContent = formatHMS(baseSiteTime + secondsElapsed)
@@ -421,19 +476,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	const setLanguage = lang => {
+	const setLanguage = (lang: string) => {
 		currentLang = lang
 		document.documentElement.lang = lang
 		elements.langButton.textContent = lang.toUpperCase()
 
 		document.querySelectorAll('[data-i18n-key]').forEach(el => {
 			const key = el.getAttribute('data-i18n-key')
-			if (translations[lang]?.[key]) el.textContent = translations[lang][key]
+			if (key && translations[lang]?.[key]) {
+				el.textContent = translations[lang][key]
+			}
 		})
 
 		document.querySelectorAll('[data-i18n-key-title]').forEach(el => {
 			const key = el.getAttribute('data-i18n-key-title')
-			if (translations[lang]?.[key]) el.title = translations[lang][key]
+			if (key && translations[lang]?.[key]) {
+				;(el as HTMLElement).title = translations[lang][key]
+			}
 		})
 
 		buildThemeMenu()
@@ -473,28 +532,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 	}
 
-	const setChartType = type => {
+	const setChartType = (type: string) => {
 		currentChartType = type
-
-		// Обновляем активную кнопку
 		document.querySelectorAll('.chart-toggle button').forEach(btn => {
 			btn.classList.remove('active')
 		})
-		document.getElementById(`chart-${type}`).classList.add('active')
-
-		// Перерисовываем график
+		document.getElementById(`chart-${type}`)?.classList.add('active')
 		renderActivityChart()
 	}
 
 	const renderActivityChart = () => {
 		const ctx = elements.activityChart.getContext('2d')
+		if (!ctx) return
 
-		// Уничтожаем предыдущий график если существует
 		if (activityChartInstance) {
 			activityChartInstance.destroy()
 		}
 
-		// Если нет данных
 		if (Object.keys(dailyStats).length === 0) {
 			ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(
 				'--text-secondary'
@@ -510,19 +564,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			return
 		}
 
-		// Подготавливаем данные в зависимости от типа графика
-		let labels = []
-		let data = []
+		let labels: string[] = []
+		let data: number[] = []
 		const now = new Date()
 
 		if (currentChartType === 'daily') {
-			// Данные за последние 7 дней
 			for (let i = 6; i >= 0; i--) {
 				const date = new Date()
 				date.setDate(now.getDate() - i)
 				const dateStr = date.toISOString().slice(0, 10)
 				const dayName = translations[currentLang]['day' + date.getDay()]
-
 				labels.push(dayName)
 				data.push(
 					dailyStats[dateStr]
@@ -531,19 +582,15 @@ document.addEventListener('DOMContentLoaded', () => {
 				)
 			}
 		} else if (currentChartType === 'weekly') {
-			// Данные за последние 8 недель
 			for (let i = 7; i >= 0; i--) {
 				const weekStart = new Date()
-				weekStart.setDate(now.getDate() - i * 7)
+				weekStart.setDate(now.getDate() - i * 7 - (now.getDay() - 1))
 				const weekEnd = new Date(weekStart)
 				weekEnd.setDate(weekStart.getDate() + 6)
-
-				// ИСПРАВЛЕНО: Просто вызываем getMonthName, без повторного обращения к translations
 				const weekLabel = `${weekStart.getDate()}-${weekEnd.getDate()} ${getMonthName(
 					weekEnd.getMonth()
 				)}`
 				labels.push(weekLabel)
-
 				let weekTotal = 0
 				for (let d = 0; d < 7; d++) {
 					const day = new Date(weekStart)
@@ -559,22 +606,16 @@ document.addEventListener('DOMContentLoaded', () => {
 				data.push(weekTotal)
 			}
 		} else {
-			// ДАННЫЕ ЗА МЕСЯЦ
-			// Получаем данные за последние 6 месяцев
 			for (let i = 5; i >= 0; i--) {
 				const month = new Date(now.getFullYear(), now.getMonth() - i, 1)
-				// ИСПРАВЛЕНО: Просто вызываем getMonthName
 				const monthName =
 					getMonthName(month.getMonth()) +
 					' ' +
 					month.getFullYear().toString().slice(2)
 				labels.push(monthName)
-
 				let monthTotal = 0
 				const monthStart = new Date(month.getFullYear(), month.getMonth(), 1)
 				const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0)
-
-				// Перебираем все дни месяца
 				const currentDate = new Date(monthStart)
 				while (currentDate <= monthEnd) {
 					const dayStr = currentDate.toISOString().slice(0, 10)
@@ -590,33 +631,29 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		}
 
-		// Конвертируем секунды в часы для лучшего отображения
-		const dataInHours = data.map(seconds => (seconds / 3600).toFixed(1))
+		const dataInHours = data.map(seconds =>
+			parseFloat((seconds / 3600).toFixed(1))
+		)
 
-		// Получаем цвета для текущей темы
 		const getThemeColors = () => {
 			const theme = document.body.dataset.theme || 'monolith'
-
-			// Резервные цвета для каждой темы
-			const themeColors = {
+			const themeColors: {
+				[key: string]: { accent: string; accentLight: string }
+			} = {
 				monolith: { accent: '#4f46e5', accentLight: '#6366f1' },
 				nord: { accent: '#88c0d0', accentLight: '#8fbcbb' },
 				solar: { accent: '#268bd2', accentLight: '#2aa198' },
 				matcha: { accent: '#6aa378', accentLight: '#81b29a' },
 			}
-
 			return themeColors[theme] || themeColors.monolith
 		}
 
 		const themeColors = getThemeColors()
 		const accentColor = themeColors.accent
-
-		// Создаем градиент для графика
 		const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height)
 		gradient.addColorStop(0, hexToRgba(accentColor, 0.8))
 		gradient.addColorStop(1, hexToRgba(accentColor, 0.2))
 
-		// Получаем остальные цвета для стилизации
 		const glassBorder =
 			getComputedStyle(document.body)
 				.getPropertyValue('--glass-border')
@@ -633,7 +670,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			getComputedStyle(document.body).getPropertyValue('--glass-bg').trim() ||
 			'rgba(20, 20, 20, 0.6)'
 
-		// Создаем график с помощью Chart.js
 		activityChartInstance = new Chart(ctx, {
 			type: 'bar',
 			data: {
@@ -667,7 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						borderWidth: 1,
 						padding: 12,
 						callbacks: {
-							label: function (context) {
+							label: function (context: TooltipItem<ChartType>) {
 								const hours = context.parsed.y
 								const totalMinutes = hours * 60
 								const hoursPart = Math.floor(totalMinutes / 60)
@@ -685,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						},
 						ticks: {
 							color: textSecondary,
-							callback: function (value) {
+							callback: function (value: string | number) {
 								return value + 'h'
 							},
 						},
@@ -709,24 +745,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 	}
 
-	// Вспомогательная функция для конвертации hex в rgba
-	const hexToRgba = (hex, alpha) => {
-		// Убираем # если есть
+	const hexToRgba = (hex: string, alpha: number): string => {
 		hex = hex.replace('#', '')
-
-		// Конвертируем 3-значный hex в 6-значный
 		if (hex.length === 3) {
 			hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
 		}
-
 		const r = parseInt(hex.substring(0, 2), 16)
 		const g = parseInt(hex.substring(2, 4), 16)
 		const b = parseInt(hex.substring(4, 6), 16)
-
 		return `rgba(${r}, ${g}, ${b}, ${alpha})`
 	}
 
-	const getMonthName = monthIndex => {
+	const getMonthName = (monthIndex: number): string => {
 		const months = [
 			'jan',
 			'feb',
@@ -745,8 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		return translations[currentLang][monthKey] || monthKey
 	}
 
-	// Ресайз графика при изменении размера окна
-	let resizeTimer
+	let resizeTimer: number
 	window.addEventListener('resize', () => {
 		clearTimeout(resizeTimer)
 		resizeTimer = setTimeout(() => {

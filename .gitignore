@@ -1,0 +1,65 @@
+# Node.js
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Build
+/dist/
+/build/
+
+/env
+.env
+.env.*
+
+# Chrome extension artifacts
+*.crx
+
+# Misc
+*.local
+*.sublime-workspace
+*.sublime-project
+
+# TypeScript
+*.tsbuildinfo
+
+# Minified libraries
+lib/chart.umd.min.js
+lib/chartjs-adapter-date-fns.bundle.min.js
+
+# Source maps
+*.map
+
+# Output
+out/
+
+# Coverage
+coverage/
+
+# Temporary
+*.tmp
+*.temp
+
+# IDE
+.idea/
+
+# Mac
+.AppleDouble
+.LSOverride
+
+# Windows
+Desktop.ini
+
+# Other
+*.bak
+*.swp
+*.lock

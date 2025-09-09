@@ -9,6 +9,7 @@
 		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
 	</head>
 	<body>
+		<!-- ... (весь ваш body код без изменений) ... -->
 		<div class="glass-effect"></div>
 
 		<div class="container">
@@ -137,10 +138,26 @@
 				<div id="sites" class="card">
 					<div class="card-header">
 						<h3 class="card-title" data-i18n-key="cardTitleSites">Топ Сайты</h3>
-						<span class="stats-badge" id="sites-count">0</span>
+						<div class="chart-toggle sites-toggle">
+							<button
+								id="sites-daily"
+								class="active"
+								data-i18n-key="chartDaily"
+							>
+								Дни
+							</button>
+							<button id="sites-weekly" data-i18n-key="chartWeekly">
+								Недели
+							</button>
+							<button id="sites-monthly" data-i18n-key="chartMonthly">
+								Месяцы
+							</button>
+						</div>
 					</div>
 					<div class="card-content">
-						<div id="sites-list-container"></div>
+						<div id="sites-list-container">
+							<!-- Sites will be rendered here -->
+						</div>
 					</div>
 				</div>
 			</div>
@@ -172,7 +189,6 @@
 		</div>
 
 		<!-- Подключение скриптов расширения -->
-		<script src="translations.js"></script>
-		<script src="popup.js"></script>
+		<script type="module" src="popup.js"></script>
 	</body>
 </html>
