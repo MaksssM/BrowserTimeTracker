@@ -1,0 +1,23 @@
+{
+	"manifest_version": 3,
+	"name": "Zenith Dashboard Pro",
+	"version": "1.0",
+	"description": "A powerful dashboard extension for enhanced productivity.",
+	"permissions": ["tabs", "storage", "alarms"],
+	"background": {
+		"service_worker": "background.js",
+		"type": "module"
+	},
+	"action": {
+		"default_popup": "popup.html"
+	},
+	"content_security_policy": {
+		"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+	},
+	"web_accessible_resources": [
+		{
+			"resources": ["lib/*"],
+			"matches": ["<all_urls>"]
+		}
+	]
+}

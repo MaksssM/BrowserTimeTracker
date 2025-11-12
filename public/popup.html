@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Zenith Dashboard Pro</title>
+		<link rel="stylesheet" href="style.css" />
+		<script src="lib/chart.umd.min.js"></script>
+		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
+	</head>
+	<body>
+		<div class="glass-effect"></div>
+
+		<div class="container">
+			<div id="error-container" class="error-container"></div>
+
+			<header class="header">
+				<h1 class="title" data-i18n-key="headerTitle">Statistics</h1>
+				<div class="controls">
+					<select id="period-select">
+						<option value="today" data-i18n-key="periodToday">Today</option>
+						<option value="week" data-i18n-key="periodWeek">Week</option>
+						<option value="month" data-i18n-key="periodMonth">Month</option>
+						<option value="year" data-i18n-key="periodYear">Year</option>
+					</select>
+
+					<button id="export-button" title="Export data">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M12 2.25a.75.75 0 01.75.75v11.69l3.22-3.22a.75.75 0 111.06 1.06l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.06l3.22 3.22V3a.75.75 0 01.75-.75zm-9 13.5a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</button>
+
+					<button id="lang-button" title="Change language">EN</button>
+					<div id="lang-menu" class="dropdown-menu"></div>
+
+					<button id="theme-button" data-i18n-key-title="tooltipTheme">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								d="M12 2.25a.75.75 0 01.75.75v.518a13.535 13.535 0 015.65 2.181.75.75 0 01-.53 1.321A12.036 12.036 0 0012 6a12.036 12.036 0 00-5.87 1.27.75.75 0 01-.53-1.32A13.535 13.535 0 0111.25 2.768V2.25a.75.75 0 01.75-.75zM4.533 8.243A13.545 13.545 0 013 12a13.545 13.545 0 011.533 3.757.75.75 0 01-1.255.787A15.045 15.045 0 001.5 12c0-2.425.57-4.722 1.588-6.79.467-.954 1.683-.902 2.106.088a.75.75 0 01-.762 1.045zM21.22 7.21a.75.75 0 01.762 1.045 15.045 15.045 0 01-1.588 6.79.75.75 0 11-1.255-.787A13.545 13.545 0 0021 12a13.545 13.545 0 00-1.533-3.757c-.424-1.028.740-1.848 2.106-.088a.75.75 0 01-.353-.944zM12 1.5a.75.75 0 01.75.75v19.5a.75.75 0 01-1.5 0V2.25A.75.75 0 0112 1.5z"
+							/>
+						</svg>
+					</button>
+					<div id="theme-menu" class="dropdown-menu"></div>
+
+					<button id="settings-button" title="Настройки">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.49 7.49 0 00-.88.45c-.416.278-.826.588-1.22.912a.75.75 0 01-1.06-1.06c.376-.376.786-.686 1.225-.964.243-.163.473-.310.692-.441.312-.19.63-.358.955-.5l-.153-.682c-.274-1.226.716-2.398 1.94-2.398h1.843c1.224 0 2.214 1.172 1.94 2.398l-.164.732c.325.142.643.31.955.5.22.131.45.278.692.441.44.278.850.588 1.225.964a.75.75 0 01-1.06 1.06c-.394-.324-.804-.634-1.22-.912a7.49 7.49 0 00-.88-.45c-.182-.088-.277-.228-.297-.348l-.178-.072c-.151-.904-.933-1.567-1.85-1.567h-1.843zM12 9a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5z"
+								clip-rule="evenodd"
+							/>
+							<path
+								d="M8.25 15a.75.75 0 01.75-.75h6a.75.75 0 010 1.5H9a.75.75 0 01-.75-.75z"
+							/>
+						</svg>
+					</button>
+
+					<button id="pause-button" data-i18n-key-title="tooltipPause">
+						<svg
+							class="pause"
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M6.75 5.25a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H6.75zm8.25 0a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H15z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+						<svg
+							class="play"
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.648c1.295.742 1.295 2.545 0 3.286L7.279 20.99c-1.25.717-2.779-.217-2.779-1.643V5.653z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</button>
+				</div>
+			</header>
+
+			<div class="main-grid">
+				<div id="live" class="card">
+					<div class="card-header">
+						<h3 class="card-title" data-i18n-key="cardTitleLive">Live Now</h3>
+						<span class="stats-badge pulse" data-i18n-key="statusLive"
+							>LIVE</span
+						>
+					</div>
+					<div class="card-content">
+						<div class="live-header">
+							<img id="live-favicon" src="" alt="" />
+							<p id="live-hostname" data-i18n-key="statusLoading">Loading...</p>
+						</div>
+						<h2 id="live-timer">00:00:00</h2>
+					</div>
+				</div>
+
+				<div id="summary" class="card">
+					<div class="card-header">
+						<h3 class="card-title" data-i18n-key="cardTitleSummary">
+							Total Time Spent
+						</h3>
+					</div>
+					<div class="card-content">
+						<h3 id="summary-title"></h3>
+						<h2 id="summary-time">00:00:00</h2>
+						<p id="comparison-insight">...</p>
+					</div>
+				</div>
+
+				<div id="sites" class="card">
+					<div class="card-header">
+						<h3 class="card-title" data-i18n-key="cardTitleSites">Top Sites</h3>
+						<div class="chart-toggle sites-toggle">
+							<button
+								id="sites-daily"
+								class="active"
+								data-i18n-key="chartDaily"
+							>
+								Days
+							</button>
+							<button id="sites-weekly" data-i18n-key="chartWeekly">
+								Weeks
+							</button>
+							<button id="sites-monthly" data-i18n-key="chartMonthly">
+								Months
+							</button>
+						</div>
+					</div>
+					<div class="card-content">
+						<div id="sites-list-container"></div>
+					</div>
+				</div>
+			</div>
+
+			<div id="trend" class="card">
+				<div class="card-header">
+					<h3 class="card-title" data-i18n-key="cardTitleTrend">
+						Activity Trend
+					</h3>
+				</div>
+				<div class="card-content">
+					<div class="chart-toggle">
+						<button id="chart-daily" class="active" data-i18n-key="chartDaily">
+							Days
+						</button>
+						<button id="chart-weekly" data-i18n-key="chartWeekly">Weeks</button>
+						<button id="chart-monthly" data-i18n-key="chartMonthly">
+							Months
+						</button>
+					</div>
+					<div class="chart-container">
+						<canvas id="activity-chart"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script type="module" src="popup.js"></script>
+	</body>
+</html>
