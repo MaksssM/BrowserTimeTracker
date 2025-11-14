@@ -24,77 +24,109 @@
 						<option value="year" data-i18n-key="periodYear">Year</option>
 					</select>
 
-					<button id="export-button" title="Export data">
+					<button
+						id="export-button"
+						title="Export data (CSV)"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-download"
 						>
-							<path
-								fill-rule="evenodd"
-								d="M12 2.25a.75.75 0 01.75.75v11.69l3.22-3.22a.75.75 0 111.06 1.06l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.06l3.22 3.22V3a.75.75 0 01.75-.75zm-9 13.5a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
-								clip-rule="evenodd"
-							/>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="7 10 12 15 17 10" />
+							<line x1="12" y1="15" x2="12" y2="3" />
 						</svg>
 					</button>
 
-					<button id="lang-button" title="Change language">EN</button>
+					<button
+						id="lang-button"
+						title="Language (EN/UK/ES/DE/FR)"
+						class="tooltip-trigger"
+					>
+						EN
+					</button>
 					<div id="lang-menu" class="dropdown-menu"></div>
 
-					<button id="theme-button" data-i18n-key-title="tooltipTheme">
+					<button
+						id="theme-button"
+						data-i18n-key-title="tooltipTheme"
+						title="Switch theme"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-palette"
 						>
-							<path
-								d="M12 2.25a.75.75 0 01.75.75v.518a13.535 13.535 0 015.65 2.181.75.75 0 01-.53 1.321A12.036 12.036 0 0012 6a12.036 12.036 0 00-5.87 1.27.75.75 0 01-.53-1.32A13.535 13.535 0 0111.25 2.768V2.25a.75.75 0 01.75-.75zM4.533 8.243A13.545 13.545 0 013 12a13.545 13.545 0 011.533 3.757.75.75 0 01-1.255.787A15.045 15.045 0 001.5 12c0-2.425.57-4.722 1.588-6.79.467-.954 1.683-.902 2.106.088a.75.75 0 01-.762 1.045zM21.22 7.21a.75.75 0 01.762 1.045 15.045 15.045 0 01-1.588 6.79.75.75 0 11-1.255-.787A13.545 13.545 0 0021 12a13.545 13.545 0 00-1.533-3.757c-.424-1.028.740-1.848 2.106-.088a.75.75 0 01-.353-.944zM12 1.5a.75.75 0 01.75.75v19.5a.75.75 0 01-1.5 0V2.25A.75.75 0 0112 1.5z"
-							/>
+							<circle cx="12" cy="12" r="5" />
+							<line x1="12" y1="1" x2="12" y2="3" />
+							<line x1="12" y1="21" x2="12" y2="23" />
+							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+							<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+							<line x1="1" y1="12" x2="3" y2="12" />
+							<line x1="21" y1="12" x2="23" y2="12" />
+							<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
 						</svg>
 					</button>
 					<div id="theme-menu" class="dropdown-menu"></div>
 
-					<button id="settings-button" title="Настройки">
+					<button
+						id="settings-button"
+						title="Settings"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-settings"
 						>
+							<circle cx="12" cy="12" r="3" />
 							<path
-								fill-rule="evenodd"
-								d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.49 7.49 0 00-.88.45c-.416.278-.826.588-1.22.912a.75.75 0 01-1.06-1.06c.376-.376.786-.686 1.225-.964.243-.163.473-.310.692-.441.312-.19.63-.358.955-.5l-.153-.682c-.274-1.226.716-2.398 1.94-2.398h1.843c1.224 0 2.214 1.172 1.94 2.398l-.164.732c.325.142.643.31.955.5.22.131.45.278.692.441.44.278.850.588 1.225.964a.75.75 0 01-1.06 1.06c-.394-.324-.804-.634-1.22-.912a7.49 7.49 0 00-.88-.45c-.182-.088-.277-.228-.297-.348l-.178-.072c-.151-.904-.933-1.567-1.85-1.567h-1.843zM12 9a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5z"
-								clip-rule="evenodd"
-							/>
-							<path
-								d="M8.25 15a.75.75 0 01.75-.75h6a.75.75 0 010 1.5H9a.75.75 0 01-.75-.75z"
+								d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m2.12 2.12l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m2.12-2.12l4.24-4.24M19.78 19.78l-4.24-4.24m-2.12-2.12l-4.24-4.24M19.78 4.22l-4.24 4.24m-2.12 2.12l-4.24 4.24M23 12h-6m-6 0H5"
 							/>
 						</svg>
 					</button>
 
-					<button id="pause-button" data-i18n-key-title="tooltipPause">
+					<button
+						id="pause-button"
+						data-i18n-key-title="tooltipPause"
+						title="Pause/Resume tracking"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
-							class="pause"
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
 							fill="currentColor"
+							class="pause icon-pause"
 						>
-							<path
-								fill-rule="evenodd"
-								d="M6.75 5.25a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H6.75zm8.25 0a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H15z"
-								clip-rule="evenodd"
-							/>
+							<rect x="6" y="4" width="4" height="16" />
+							<rect x="14" y="4" width="4" height="16" />
 						</svg>
 						<svg
-							class="play"
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
 							fill="currentColor"
+							class="play icon-play"
 						>
-							<path
-								fill-rule="evenodd"
-								d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.648c1.295.742 1.295 2.545 0 3.286L7.279 20.99c-1.25.717-2.779-.217-2.779-1.643V5.653z"
-								clip-rule="evenodd"
-							/>
+							<polygon points="5 3 19 12 5 21 5 3" />
 						</svg>
 					</button>
 				</div>
@@ -103,7 +135,19 @@
 			<div class="main-grid">
 				<div id="live" class="card">
 					<div class="card-header">
-						<h3 class="card-title" data-i18n-key="cardTitleLive">Live Now</h3>
+						<div class="card-title-wrapper">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								class="card-icon"
+							>
+								<path
+									d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+								/>
+							</svg>
+							<h3 class="card-title" data-i18n-key="cardTitleLive">Live Now</h3>
+						</div>
 						<span class="stats-badge pulse" data-i18n-key="statusLive"
 							>LIVE</span
 						>
@@ -119,9 +163,21 @@
 
 				<div id="summary" class="card">
 					<div class="card-header">
-						<h3 class="card-title" data-i18n-key="cardTitleSummary">
-							Total Time Spent
-						</h3>
+						<div class="card-title-wrapper">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								class="card-icon"
+							>
+								<path
+									d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-2.29-2.92c-.2-.27-.52-.42-.85-.42-.33 0-.65.15-.85.42l-2.96 3.83c-.37.48-.09 1.24.55 1.24h5.63c.37 0 .65-.32.65-.68 0-.38-.28-.65-.65-.65h-3.92l2.3-2.99 2.75 3.54c.2.27.52.42.85.42s.65-.15.85-.42l4.75-6.13c.37-.48.09-1.24-.55-1.24H7.04c-.37 0-.65.32-.65.68 0 .38.28.65.65.65h10.21l-3.29 4.25z"
+								/>
+							</svg>
+							<h3 class="card-title" data-i18n-key="cardTitleSummary">
+								Total Time Spent
+							</h3>
+						</div>
 					</div>
 					<div class="card-content">
 						<h3 id="summary-title"></h3>
@@ -132,7 +188,21 @@
 
 				<div id="sites" class="card">
 					<div class="card-header">
-						<h3 class="card-title" data-i18n-key="cardTitleSites">Top Sites</h3>
+						<div class="card-title-wrapper">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								class="card-icon"
+							>
+								<path
+									d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"
+								/>
+							</svg>
+							<h3 class="card-title" data-i18n-key="cardTitleSites">
+								Top Sites
+							</h3>
+						</div>
 						<div class="chart-toggle sites-toggle">
 							<button
 								id="sites-daily"
@@ -160,9 +230,21 @@
 
 			<div id="trend" class="card">
 				<div class="card-header">
-					<h3 class="card-title" data-i18n-key="cardTitleTrend">
-						Activity Trend
-					</h3>
+					<div class="card-title-wrapper">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+							class="card-icon"
+						>
+							<path
+								d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18 9.41 12l4 4 6.3-6.29L22 12v-6z"
+							/>
+						</svg>
+						<h3 class="card-title" data-i18n-key="cardTitleTrend">
+							Activity Trend
+						</h3>
+					</div>
 				</div>
 				<div class="card-content">
 					<div class="chart-toggle">
@@ -177,6 +259,166 @@
 					<div class="chart-container">
 						<canvas id="activity-chart"></canvas>
 					</div>
+				</div>
+			</div>
+
+			<div id="distribution" class="card">
+				<div class="card-header">
+					<div class="card-title-wrapper">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+							class="card-icon"
+						>
+							<path
+								d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-1-2-2-2zM3 13h4v8H3zm8-5h4v13h-4zm8-2h4v15h-4z"
+							/>
+						</svg>
+						<h3 class="card-title" data-i18n-key="cardTitleDistribution">
+							Time Distribution
+						</h3>
+					</div>
+				</div>
+				<div class="card-content">
+					<div class="chart-toggle">
+						<button id="dist-daily" class="active" data-i18n-key="chartDaily">
+							Days
+						</button>
+						<button id="dist-weekly" data-i18n-key="chartWeekly">Weeks</button>
+						<button id="dist-monthly" data-i18n-key="chartMonthly">
+							Months
+						</button>
+					</div>
+					<div class="chart-container">
+						<canvas id="distribution-chart"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="settings-modal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2 data-i18n-key="customizeTheme">Settings</h2>
+					<button class="modal-close">&times;</button>
+				</div>
+				<div class="modal-body">
+					<div class="settings-group">
+						<label for="reminder-time" data-i18n-key="timeWarning"
+							>Reminder Time (minutes)</label
+						>
+						<input type="number" id="reminder-time" min="5" max="240" />
+					</div>
+
+					<div class="settings-group">
+						<label for="sound-toggle">Sound Notification</label>
+						<input type="checkbox" id="sound-toggle" />
+					</div>
+
+					<div
+						class="settings-group"
+						style="font-size: 13px; color: var(--text-secondary, #888)"
+					>
+						<strong
+							>BrowserTimeTracker
+							<span style="font-weight: normal">v1.0</span></strong
+						><br />
+						Автор:
+						<a
+							href="https://github.com/MaksssM"
+							target="_blank"
+							style="color: var(--accent-color, #4f46e5)"
+							>MaksssM</a
+						><br />
+						<a
+							href="https://github.com/MaksssM/BrowserTimeTracker"
+							target="_blank"
+							style="color: var(--accent-color, #4f46e5)"
+							>GitHub</a
+						>
+						&nbsp;|&nbsp;
+						<a
+							href="https://your-privacy-policy-link"
+							target="_blank"
+							style="color: var(--accent-color, #4f46e5)"
+							>Privacy Policy</a
+						>
+						<p id="usage-days" style="margin: 8px 0 0 0; font-weight: bold">
+							Днів користування: ...
+						</p>
+					</div>
+
+					<div class="settings-group" style="font-size: 13px">
+						<strong>Як користуватись?</strong>
+						<ul style="margin: 4px 0 0 16px; padding: 0">
+							<li>Відкрийте розширення, щоб побачити статистику.</li>
+							<li>
+								Використовуйте вкладки для перегляду топ-сайтів, трендів,
+								розподілу часу.
+							</li>
+							<li>Налаштуйте нагадування про перерву.</li>
+						</ul>
+					</div>
+
+					<div class="settings-group">
+						<button
+							id="clear-data-btn"
+							class="btn-secondary"
+							style="width: 100%; margin-top: 4px"
+						>
+							Очистити всі дані
+						</button>
+						<p
+							style="
+								font-size: 12px;
+								color: var(--text-secondary, #888);
+								margin: 4px 0 0 0;
+							"
+						>
+							Увага: ця дія видалить всю статистику!
+						</p>
+					</div>
+					<div class="settings-group">
+						<button
+							id="feedback-btn"
+							class="btn-secondary"
+							style="width: 100%; margin-top: 4px"
+						>
+							Залишити відгук
+						</button>
+					</div>
+
+					<div class="settings-group">
+						<a
+							href="https://t.me/your_support_channel"
+							target="_blank"
+							rel="noopener"
+							style="
+								color: var(--accent-color, #4f46e5);
+								text-decoration: underline;
+								font-size: 13px;
+							"
+						>
+							Support / Feedback
+						</a>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button
+						id="reset-theme-btn"
+						class="btn-secondary"
+						data-i18n-key="resetTheme"
+					>
+						Reset
+					</button>
+					<button
+						id="save-settings-btn"
+						class="btn-primary"
+						data-i18n-key="exportData"
+					>
+						Save
+					</button>
 				</div>
 			</div>
 		</div>

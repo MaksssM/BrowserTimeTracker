@@ -18,6 +18,8 @@
 	let isPaused = false
 	let saveInterval: number | null = null
 	let lastProcessedDate: string | null = null
+	let lastRemindedHost: string | null = null
+	let reminderThreshold: number = 30 * 60 * 1000 // 30 minutes default
 
 	const getHost = (url: string): string | null => {
 		try {
@@ -44,10 +46,12 @@
 				'dailyStats',
 				'isPaused',
 				'lastProcessedDate',
+				'reminderThreshold',
 			])
 			dailyStats = data.dailyStats || {}
 			isPaused = data.isPaused || false
 			lastProcessedDate = data.lastProcessedDate || null
+			reminderThreshold = data.reminderThreshold || 30 * 60 * 1000
 			console.log('Initial data loaded.', {
 				dailyStats,
 				isPaused,
@@ -169,6 +173,43 @@
 		console.log('Cleaned up old data')
 	}
 
+	const checkLongActivityReminder = () => {
+		if (
+			isPaused ||
+			!currentState.currentHost ||
+			!currentState.currentSessionStart
+		) {
+			lastRemindedHost = null
+			return
+		}
+
+		const sessionDuration = Date.now() / 1000 - currentState.currentSessionStart
+		const sessionDurationMs = sessionDuration * 1000
+
+		// Только показываем напоминание если:
+		// 1. Время превышает порог
+		// 2. Это не тот хост, на который уже показали напоминание
+		if (
+			sessionDurationMs >= reminderThreshold &&
+			lastRemindedHost !== currentState.currentHost
+		) {
+			const hours = Math.floor(sessionDuration / 3600)
+			const minutes = Math.floor((sessionDuration % 3600) / 60)
+			const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+
+			chrome.notifications.create({
+				type: 'basic',
+				iconUrl:
+					'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIyMCIgZmlsbD0iIzRmNDZlNSIvPjwvc3ZnPg==',
+				title: 'Time for a Break',
+				message: `You've spent ${timeStr} on ${currentState.currentHost}. Consider taking a break!`,
+				priority: 1,
+			})
+
+			lastRemindedHost = currentState.currentHost
+		}
+	}
+
 	const checkNewDay = async () => {
 		const today = getDateKey()
 
@@ -265,6 +306,10 @@
 			sendResponse({
 				startOfDay: getStartOfDay().getTime(),
 			})
+		} else if (request.type === 'SET_REMINDER_THRESHOLD') {
+			reminderThreshold = request.threshold || 30 * 60 * 1000
+			chrome.storage.local.set({ reminderThreshold })
+			sendResponse({ success: true })
 		}
 		return true
 	})
@@ -278,6 +323,7 @@
 			saveInterval = setInterval(() => {
 				checkNewDay()
 				saveCurrentSession()
+				checkLongActivityReminder()
 			}, 15000)
 		}
 
