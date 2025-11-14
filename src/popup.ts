@@ -2,7 +2,6 @@ import { translations } from './translations'
 import { Chart, registerables, TooltipItem, ChartType } from 'chart.js'
 Chart.register(...registerables)
 
-// Type definitions
 interface DailyStats {
 	[date: string]: {
 		[hostname: string]: number
@@ -81,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		sitesDaily: document.getElementById('sites-daily') as HTMLButtonElement,
 		sitesWeekly: document.getElementById('sites-weekly') as HTMLButtonElement,
 		sitesMonthly: document.getElementById('sites-monthly') as HTMLButtonElement,
+		sitesYearly: document.getElementById('sites-yearly') as HTMLButtonElement,
 		activityChart: document.getElementById(
 			'activity-chart'
 		) as HTMLCanvasElement,
@@ -190,6 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		)
 		elements.sitesMonthly.addEventListener('click', () =>
 			setSitesPeriod('monthly')
+		)
+		elements.sitesYearly.addEventListener('click', () =>
+			setSitesPeriod('yearly')
 		)
 
 		elements.themeButton.addEventListener('click', e => {
@@ -316,6 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				break
 			case 'monthly':
 				sitesStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
+				break
+			case 'yearly':
+				sitesStartDate = new Date(now.getFullYear(), 0, 1)
 				break
 			default:
 				sitesStartDate = new Date(
