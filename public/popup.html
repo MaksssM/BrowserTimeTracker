@@ -84,6 +84,75 @@
 					<div id="theme-menu" class="dropdown-menu"></div>
 
 					<button
+						id="categories-button"
+						data-i18n-key-title="tooltipCategories"
+						title="Manage website categories"
+						class="btn-icon tooltip-trigger"
+						style="position: relative"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+							class="icon-categories"
+						>
+							<rect
+								x="2"
+								y="3"
+								width="8"
+								height="5"
+								rx="1"
+								fill="currentColor"
+							/>
+							<rect
+								x="14"
+								y="3"
+								width="8"
+								height="5"
+								rx="1"
+								fill="currentColor"
+							/>
+							<rect
+								x="2"
+								y="11"
+								width="8"
+								height="5"
+								rx="1"
+								fill="currentColor"
+							/>
+							<rect
+								x="14"
+								y="11"
+								width="8"
+								height="5"
+								rx="1"
+								fill="currentColor"
+							/>
+							<rect
+								x="2"
+								y="19"
+								width="20"
+								height="2"
+								rx="1"
+								fill="currentColor"
+								opacity="0.5"
+							/>
+						</svg>
+						<span
+							style="
+								position: absolute;
+								top: -2px;
+								right: -2px;
+								width: 8px;
+								height: 8px;
+								background: #ff4444;
+								border-radius: 50%;
+								animation: pulse 2s infinite;
+							"
+						></span>
+					</button>
+
+					<button
 						id="settings-button"
 						title="Settings"
 						class="btn-icon tooltip-trigger"
@@ -316,6 +385,59 @@
 						<input type="checkbox" id="sound-toggle" />
 					</div>
 
+					<div class="settings-group">
+						<label for="timezone-select">Timezone</label>
+						<select
+							id="timezone-select"
+							style="
+								width: 100%;
+								padding: 6px;
+								border-radius: 4px;
+								border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+								background: var(--glass-bg, rgba(20, 20, 20, 0.6));
+								color: var(--text-primary, #f5f5f5);
+							"
+						>
+							<option value="auto">Auto (Browser)</option>
+							<option value="UTC">UTC (GMT+0)</option>
+							<option value="UTC+1">UTC+1</option>
+							<option value="UTC+2">UTC+2</option>
+							<option value="UTC+3">UTC+3</option>
+							<option value="UTC+4">UTC+4</option>
+							<option value="UTC+5">UTC+5</option>
+							<option value="UTC+6">UTC+6</option>
+							<option value="UTC+7">UTC+7</option>
+							<option value="UTC+8">UTC+8</option>
+							<option value="UTC+9">UTC+9</option>
+							<option value="UTC+10">UTC+10</option>
+							<option value="UTC+11">UTC+11</option>
+							<option value="UTC+12">UTC+12</option>
+							<option value="UTC-1">UTC-1</option>
+							<option value="UTC-2">UTC-2</option>
+							<option value="UTC-3">UTC-3</option>
+							<option value="UTC-4">UTC-4</option>
+							<option value="UTC-5">UTC-5</option>
+							<option value="UTC-6">UTC-6</option>
+							<option value="UTC-7">UTC-7</option>
+							<option value="UTC-8">UTC-8</option>
+							<option value="UTC-9">UTC-9</option>
+							<option value="UTC-10">UTC-10</option>
+							<option value="UTC-11">UTC-11</option>
+							<option value="UTC-12">UTC-12</option>
+						</select>
+					</div>
+
+					<div class="settings-group">
+						<button
+							id="manage-categories-btn"
+							class="btn-secondary"
+							data-i18n-key="manageCategories"
+							style="width: 100%; margin-top: 4px"
+						>
+							Manage Categories
+						</button>
+					</div>
+
 					<div
 						class="settings-group"
 						style="font-size: 13px; color: var(--text-secondary, #888)"
@@ -346,6 +468,47 @@
 						>
 						<p id="usage-days" style="margin: 8px 0 0 0; font-weight: bold">
 							Днів користування: ...
+						</p>
+					</div>
+
+					<div
+						class="settings-group"
+						style="
+							padding: 12px;
+							background: linear-gradient(
+								135deg,
+								rgba(99, 102, 241, 0.1) 0%,
+								rgba(236, 72, 153, 0.1) 100%
+							);
+							border-radius: 8px;
+							border-left: 3px solid #6366f1;
+						"
+					>
+						<div
+							style="
+								display: flex;
+								align-items: center;
+								gap: 8px;
+								margin-bottom: 8px;
+							"
+						>
+							<span style="font-size: 18px">🏷️</span>
+							<strong style="font-size: 13px" data-i18n-key="siteCategories"
+								>Site Categories</strong
+							>
+						</div>
+						<p
+							style="
+								margin: 0;
+								font-size: 12px;
+								color: var(--text-secondary, #888);
+								line-height: 1.4;
+							"
+							data-i18n-key="organizeWebsites"
+						>
+							Organize your websites into categories (Work, Learning,
+							Entertainment, Social, Shopping, Other). Tap the Categories button
+							in the header to manage them.
 						</p>
 					</div>
 
@@ -422,6 +585,110 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Модальне вікно для управління категоріями -->
+		<div id="categories-modal" class="modal">
+			<div
+				class="modal-content"
+				style="
+					max-width: 600px;
+					max-height: 85vh;
+					overflow-y: auto;
+					display: flex;
+					flex-direction: column;
+				"
+			>
+				<div class="modal-header">
+					<h2 data-i18n-key="manageCategories">Manage Site Categories</h2>
+					<button class="modal-close" id="categories-modal-close">
+						&times;
+					</button>
+				</div>
+				<div
+					class="modal-body"
+					style="flex: 1; display: flex; flex-direction: column; gap: 16px"
+				>
+					<!-- Секція для додавання нових сайтів -->
+					<div
+						style="
+							padding: 12px;
+							background: rgba(255, 255, 255, 0.05);
+							border-radius: 8px;
+							border: 1px solid rgba(255, 255, 255, 0.1);
+						"
+					>
+						<div
+							style="
+								font-weight: 600;
+								margin-bottom: 10px;
+								font-size: 13px;
+								text-transform: uppercase;
+								opacity: 0.8;
+							"
+							data-i18n-key="addNewSite"
+						>
+							Add New Site
+						</div>
+						<div style="display: flex; gap: 8px; margin-bottom: 8px">
+							<input
+								type="text"
+								id="new-site-input"
+								placeholder="example.com or example.org"
+								style="
+									flex: 1;
+									padding: 8px 10px;
+									border-radius: 6px;
+									border: 1px solid rgba(255, 255, 255, 0.15);
+									background: rgba(20, 20, 20, 0.4);
+									color: var(--text-primary, #f5f5f5);
+									font-size: 13px;
+									transition: all 0.2s;
+								"
+							/>
+						</div>
+						<div
+							style="
+								display: grid;
+								grid-template-columns: repeat(3, 1fr);
+								gap: 6px;
+							"
+							id="category-buttons-container"
+						>
+							<!-- Динамично генерируются кнопки категорий -->
+						</div>
+					</div>
+
+					<!-- Список категорий с сайтами -->
+					<div style="flex: 1; overflow-y: auto">
+						<div
+							style="
+								font-weight: 600;
+								margin-bottom: 10px;
+								font-size: 13px;
+								text-transform: uppercase;
+								opacity: 0.8;
+							"
+						>
+							Your Categories
+						</div>
+						<div
+							id="categories-list"
+							style="display: flex; flex-direction: column; gap: 8px"
+						></div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button
+						id="categories-close-btn"
+						class="btn-primary"
+						data-i18n-key="close"
+					>
+						Close
+					</button>
+				</div>
+			</div>
+		</div>
+
 		<script type="module" src="popup.js"></script>
 	</body>
 </html>

@@ -17,6 +17,15 @@ interface CurrentState {
 interface SyncData {
 	theme: string
 	language: string
+	timezone?: string
+}
+
+interface SiteCategory {
+	[hostname: string]: string // hostname -> category name
+}
+
+interface CategoryColor {
+	[category: string]: string // category -> color
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,6 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
 	let activityChartInstance: Chart | null = null
 	let distributionChartInstance: Chart | null = null
 	let reminderThreshold: number = 30 * 60 * 1000 // 30 minutes
+	let siteCategories: SiteCategory = {}
+	let currentTimezone = 'auto'
+	const defaultCategoryColors: CategoryColor = {
+		work: '#6366f1',
+		learning: '#f59e0b',
+		entertainment: '#ec4899',
+		social: '#06b6d4',
+		shopping: '#10b981',
+		other: '#8b5cf6',
+	}
 
 	const LANGUAGES = [
 		{ id: 'uk', name: 'Українська' },
@@ -105,6 +124,28 @@ document.addEventListener('DOMContentLoaded', () => {
 		reminderTimeInput: document.getElementById(
 			'reminder-time'
 		) as HTMLInputElement,
+		timezoneSelect: document.getElementById(
+			'timezone-select'
+		) as HTMLSelectElement,
+		categoriesButton: document.getElementById(
+			'categories-button'
+		) as HTMLButtonElement,
+		manageCategoriesBtn: document.getElementById(
+			'manage-categories-btn'
+		) as HTMLButtonElement,
+		categoriesModal: document.getElementById(
+			'categories-modal'
+		) as HTMLDivElement,
+		categoriesModalClose: document.getElementById(
+			'categories-modal-close'
+		) as HTMLButtonElement,
+		categoriesCloseBtn: document.getElementById(
+			'categories-close-btn'
+		) as HTMLButtonElement,
+		newSiteInput: document.getElementById('new-site-input') as HTMLInputElement,
+		categoriesList: document.getElementById(
+			'categories-list'
+		) as HTMLDivElement,
 	}
 
 	const formatHMS = (s: number): string => {
@@ -165,6 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				threshold: reminderThreshold,
 			})
 		}
+
+		// Зберегти часовий пояс
+		currentTimezone = elements.timezoneSelect.value
+		chrome.storage.sync.set({ timezone: currentTimezone })
+
 		closeSettingsModal()
 	}
 
@@ -177,12 +223,236 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 	}
 
+	// Функція для отримання дати з урахуванням часового поясу
+	const getDateByTimezone = (date: Date = new Date()): string => {
+		let d = new Date(date)
+		if (currentTimezone !== 'auto') {
+			const offset = parseInt(currentTimezone.replace('UTC', ''))
+			d = new Date(d.getTime() + offset * 60 * 60 * 1000)
+		}
+		return d.toISOString().slice(0, 10)
+	}
+
+	// Функції для управління категоріями
+	const saveSiteCategories = () => {
+		chrome.storage.local.set({ siteCategories })
+	}
+
+	const loadSiteCategories = async () => {
+		const data = await chrome.storage.local.get('siteCategories')
+		if (data.siteCategories) {
+			siteCategories = data.siteCategories
+		}
+	}
+
+	const getCategoryEmoji = (category: string): string => {
+		const emojis: { [key: string]: string } = {
+			work: '💼',
+			learning: '📚',
+			entertainment: '🎬',
+			social: '👥',
+			shopping: '🛍️',
+			other: '📌',
+		}
+		return emojis[category] || '📌'
+	}
+
+	const renderCategoryButtons = () => {
+		const container = document.getElementById(
+			'category-buttons-container'
+		) as HTMLDivElement
+		if (!container) return
+
+		container.innerHTML = ''
+		const categories = Object.keys(defaultCategoryColors)
+
+		categories.forEach(category => {
+			const btn = document.createElement('button')
+			const color = defaultCategoryColors[category]
+			const emoji = getCategoryEmoji(category)
+
+			btn.innerHTML = `${emoji} ${
+				category.charAt(0).toUpperCase() + category.slice(1)
+			}`
+			btn.style.padding = '8px 10px'
+			btn.style.borderRadius = '6px'
+			btn.style.border = `1.5px solid ${color}`
+			btn.style.background = `rgba(${parseInt(
+				color.slice(1, 3),
+				16
+			)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+				color.slice(5, 7),
+				16
+			)}, 0.1)`
+			btn.style.color = color
+			btn.style.cursor = 'pointer'
+			btn.style.fontSize = '12px'
+			btn.style.fontWeight = '500'
+			btn.style.transition = 'all 0.2s'
+			btn.style.whiteSpace = 'nowrap'
+			btn.dataset.category = category
+
+			btn.onmouseenter = () => {
+				btn.style.background = `rgba(${parseInt(
+					color.slice(1, 3),
+					16
+				)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+					color.slice(5, 7),
+					16
+				)}, 0.2)`
+			}
+			btn.onmouseleave = () => {
+				btn.style.background = `rgba(${parseInt(
+					color.slice(1, 3),
+					16
+				)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+					color.slice(5, 7),
+					16
+				)}, 0.1)`
+			}
+
+			btn.onclick = () => {
+				const site = elements.newSiteInput.value.trim()
+				if (!site) {
+					showError('Please enter a site name first')
+					return
+				}
+				siteCategories[site] = category
+				saveSiteCategories()
+				elements.newSiteInput.value = ''
+				renderCategoriesList()
+				renderCategoryButtons()
+			}
+
+			container.appendChild(btn)
+		})
+	}
+
+	const renderCategoriesList = () => {
+		elements.categoriesList.innerHTML = ''
+		const categories: { [key: string]: string[] } = {}
+
+		// Групувати сайти за категоріями
+		for (const [host, cat] of Object.entries(siteCategories)) {
+			if (!categories[cat]) categories[cat] = []
+			categories[cat].push(host.toLowerCase())
+		}
+
+		if (Object.keys(categories).length === 0) {
+			const emptyMsg = document.createElement('div')
+			emptyMsg.style.textAlign = 'center'
+			emptyMsg.style.padding = '24px'
+			emptyMsg.style.color = 'rgba(255,255,255,0.5)'
+			emptyMsg.style.fontSize = '13px'
+			emptyMsg.textContent = 'No categories yet. Add a site to get started!'
+			elements.categoriesList.appendChild(emptyMsg)
+			return
+		}
+
+		// Вивести кожну категорію
+		const orderedCategories = Object.keys(defaultCategoryColors)
+		for (const category of orderedCategories) {
+			const sites = categories[category]
+			if (!sites) continue
+
+			const color = defaultCategoryColors[category]
+			const emoji = getCategoryEmoji(category)
+
+			const categoryDiv = document.createElement('div')
+			categoryDiv.style.padding = '10px'
+			categoryDiv.style.borderRadius = '8px'
+			categoryDiv.style.border = `1.5px solid ${color}`
+			categoryDiv.style.background = `rgba(${parseInt(
+				color.slice(1, 3),
+				16
+			)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+				color.slice(5, 7),
+				16
+			)}, 0.08)`
+
+			const title = document.createElement('div')
+			title.style.fontWeight = '600'
+			title.style.marginBottom = '8px'
+			title.style.color = color
+			title.style.fontSize = '12px'
+			title.innerHTML = `${emoji} ${category.toUpperCase()} (${sites.length})`
+
+			const sitesList = document.createElement('div')
+			sitesList.style.display = 'flex'
+			sitesList.style.flexDirection = 'column'
+			sitesList.style.gap = '4px'
+
+			sites.forEach(host => {
+				const siteRow = document.createElement('div')
+				siteRow.style.display = 'flex'
+				siteRow.style.justifyContent = 'space-between'
+				siteRow.style.alignItems = 'center'
+				siteRow.style.padding = '4px 6px'
+				siteRow.style.borderRadius = '4px'
+				siteRow.style.background = 'rgba(255,255,255,0.03)'
+				siteRow.style.fontSize = '12px'
+
+				const span = document.createElement('span')
+				span.textContent = host
+				span.style.wordBreak = 'break-all'
+
+				const btn = document.createElement('button')
+				btn.textContent = '✕'
+				btn.style.background = 'none'
+				btn.style.border = 'none'
+				btn.style.color = 'rgba(255,255,255,0.5)'
+				btn.style.cursor = 'pointer'
+				btn.style.padding = '0 4px'
+				btn.style.fontSize = '14px'
+				btn.style.transition = 'all 0.2s'
+				btn.style.marginLeft = '8px'
+				btn.style.flexShrink = '0'
+
+				btn.onmouseenter = () => {
+					btn.style.color = '#ff4444'
+				}
+				btn.onmouseleave = () => {
+					btn.style.color = 'rgba(255,255,255,0.5)'
+				}
+
+				btn.onclick = () => {
+					delete siteCategories[host]
+					saveSiteCategories()
+					renderCategoriesList()
+					renderCategoryButtons()
+				}
+
+				siteRow.appendChild(span)
+				siteRow.appendChild(btn)
+				sitesList.appendChild(siteRow)
+			})
+
+			categoryDiv.appendChild(title)
+			categoryDiv.appendChild(sitesList)
+			elements.categoriesList.appendChild(categoryDiv)
+		}
+	}
+
+	const openCategoriesModal = () => {
+		elements.categoriesModal.classList.add('show')
+		renderCategoriesList()
+		renderCategoryButtons()
+	}
+
+	const closeCategoriesModal = () => {
+		elements.categoriesModal.classList.remove('show')
+	}
+
 	const init = async () => {
 		try {
 			const syncData = (await chrome.storage.sync.get({
 				theme: 'monolith',
 				language: 'en',
+				timezone: 'auto',
 			})) as SyncData
+
+			currentTimezone = syncData.timezone || 'auto'
+			await loadSiteCategories()
 
 			chrome.runtime.sendMessage({ type: 'GET_CURRENT_STATE' }, response => {
 				if (chrome.runtime.lastError) {
@@ -279,6 +549,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.settingsButton.addEventListener('click', () => {
 			openSettingsModal()
 		})
+
+		elements.categoriesButton.addEventListener('click', () => {
+			openCategoriesModal()
+		})
+
+		elements.manageCategoriesBtn.addEventListener('click', () => {
+			openCategoriesModal()
+		})
+
+		elements.categoriesModalClose.addEventListener(
+			'click',
+			closeCategoriesModal
+		)
+		elements.categoriesCloseBtn.addEventListener('click', closeCategoriesModal)
+
+		document.addEventListener('click', e => {
+			const target = e.target as HTMLElement
+			if (
+				elements.categoriesModal.classList.contains('show') &&
+				target === elements.categoriesModal
+			) {
+				closeCategoriesModal()
+			}
+		})
+
+		elements.timezoneSelect.value = currentTimezone
 
 		elements.langButton.addEventListener('click', e => {
 			e.stopPropagation()
