@@ -270,10 +270,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			const btn = document.createElement('button')
 			const color = defaultCategoryColors[category]
 			const emoji = getCategoryEmoji(category)
+			const categoryName =
+				translations[currentLang][
+					'category' + category.charAt(0).toUpperCase() + category.slice(1)
+				] || category
 
-			btn.innerHTML = `${emoji} ${
-				category.charAt(0).toUpperCase() + category.slice(1)
-			}`
+			btn.innerHTML = `${emoji} ${categoryName}`
 			btn.style.padding = '8px 10px'
 			btn.style.borderRadius = '6px'
 			btn.style.border = `1.5px solid ${color}`
@@ -314,7 +316,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			btn.onclick = () => {
 				const site = elements.newSiteInput.value.trim()
 				if (!site) {
-					showError('Please enter a site name first')
+					showError(
+						translations[currentLang]?.enterSiteName ||
+							'Please enter a site name first'
+					)
 					return
 				}
 				siteCategories[site] = category
@@ -344,7 +349,9 @@ document.addEventListener('DOMContentLoaded', () => {
 			emptyMsg.style.padding = '24px'
 			emptyMsg.style.color = 'rgba(255,255,255,0.5)'
 			emptyMsg.style.fontSize = '13px'
-			emptyMsg.textContent = 'No categories yet. Add a site to get started!'
+			emptyMsg.textContent =
+				translations[currentLang]?.noCategories ||
+				'No categories yet. Add a site to get started!'
 			elements.categoriesList.appendChild(emptyMsg)
 			return
 		}
@@ -357,6 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			const color = defaultCategoryColors[category]
 			const emoji = getCategoryEmoji(category)
+			const categoryName =
+				translations[currentLang][
+					'category' + category.charAt(0).toUpperCase() + category.slice(1)
+				] || category
 
 			const categoryDiv = document.createElement('div')
 			categoryDiv.style.padding = '10px'
@@ -375,7 +386,9 @@ document.addEventListener('DOMContentLoaded', () => {
 			title.style.marginBottom = '8px'
 			title.style.color = color
 			title.style.fontSize = '12px'
-			title.innerHTML = `${emoji} ${category.toUpperCase()} (${sites.length})`
+			title.innerHTML = `${emoji} ${categoryName.toUpperCase()} (${
+				sites.length
+			})`
 
 			const sitesList = document.createElement('div')
 			sitesList.style.display = 'flex'
@@ -887,10 +900,20 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		})
 
+		document.querySelectorAll('[data-i18n-key-placeholder]').forEach(el => {
+			const key = el.getAttribute('data-i18n-key-placeholder')
+			if (key && translations[lang]?.[key]) {
+				;(el as HTMLInputElement).placeholder = translations[lang][key]
+			}
+		})
+
 		if (Object.keys(dailyStats).length > 0) {
 			updateDashboard()
 			renderActivityChart()
 		}
+		updateUsageDays()
+		renderCategoryButtons()
+		renderCategoriesList()
 	}
 
 	const buildLangMenu = () => {
@@ -1029,18 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			parseFloat((seconds / 3600).toFixed(1))
 		)
 
-		const getThemeColors = () => {
-			const theme = document.body.dataset.theme || 'monolith'
-			const themeColors: {
-				[key: string]: { accent: string; accentLight: string }
-			} = {
-				monolith: { accent: '#4f46e5', accentLight: '#6366f1' },
-				nord: { accent: '#88c0d0', accentLight: '#8fbcbb' },
-				solar: { accent: '#268bd2', accentLight: '#2aa198' },
-				matcha: { accent: '#6aa378', accentLight: '#81b29a' },
-			}
-			return themeColors[theme] || themeColors.monolith
-		}
+		// Use global getThemeColors
 
 		const themeColors = getThemeColors()
 		const accentColor = themeColors.accent
@@ -1289,16 +1301,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	const getThemeColors = () => {
-		const theme = document.body.dataset.theme || 'monolith'
-		const themeColors: {
-			[key: string]: { accent: string; accentLight: string }
-		} = {
-			monolith: { accent: '#4f46e5', accentLight: '#6366f1' },
-			nord: { accent: '#88c0d0', accentLight: '#8fbcbb' },
-			solar: { accent: '#268bd2', accentLight: '#2aa198' },
-			matcha: { accent: '#6aa378', accentLight: '#81b29a' },
+		const style = getComputedStyle(document.body)
+		return {
+			accent: style.getPropertyValue('--accent').trim() || '#6366f1',
+			accentLight: style.getPropertyValue('--accent-light').trim() || '#818cf8',
 		}
-		return themeColors[theme] || themeColors.monolith
 	}
 
 	let resizeTimer: number
@@ -1315,8 +1322,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	function updateUsageDays() {
 		const usageDays = Object.keys(dailyStats).length
 		const el = document.getElementById('usage-days')
-		if (el) {
-			el.textContent = `Днів користування: ${usageDays}`
+		if (el && translations[currentLang]?.usageDays) {
+			el.textContent = translations[currentLang].usageDays.replace(
+				'{days}',
+				usageDays.toString()
+			)
 		}
 	}
 
@@ -1325,9 +1335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const btn = document.getElementById('feedback-btn')
 		if (btn) {
 			btn.addEventListener('click', () => {
-				alert(
-					'Дякуємо за бажання залишити відгук! Незабаром тут зʼявиться форма.'
-				)
+				alert(translations[currentLang]?.feedbackAlert || 'Thank you!')
 			})
 		}
 	}
