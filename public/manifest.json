@@ -1,8 +1,8 @@
 {
 	"manifest_version": 3,
 	"name": "Zenith Dashboard Pro",
-	"version": "7.0",
-	"description": "Элегантная аналитическая панель вашей цифровой активности с расширенной статистикой",
+	"version": "1.0",
+	"description": "A powerful dashboard extension for enhanced productivity.",
 	"permissions": ["tabs", "storage", "alarms"],
 	"background": {
 		"service_worker": "background.js",

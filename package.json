@@ -1,16 +1,15 @@
 {
 	"name": "zenith-dashboard-pro-ts",
+	"version": "1.0.0",
 	"private": true,
-	"version": "7.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "tsc && vite build",
+		"build": "vite build",
 		"preview": "vite preview"
 	},
 	"devDependencies": {
 		"@types/chrome": "^0.0.251",
-		"@types/chart.js": "^2.9.41",
 		"typescript": "^5.2.2",
 		"vite": "^5.0.0"
 	},

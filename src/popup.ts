@@ -2,7 +2,6 @@ import { translations } from './translations'
 import { Chart, registerables, TooltipItem, ChartType } from 'chart.js'
 Chart.register(...registerables)
 
-// Type definitions
 interface DailyStats {
 	[date: string]: {
 		[hostname: string]: number
@@ -18,6 +17,15 @@ interface CurrentState {
 interface SyncData {
 	theme: string
 	language: string
+	timezone?: string
+}
+
+interface SiteCategory {
+	[hostname: string]: string // hostname -> category name
+}
+
+interface CategoryColor {
+	[category: string]: string // category -> color
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -26,8 +34,29 @@ document.addEventListener('DOMContentLoaded', () => {
 	let liveTimerInterval: number | null = null
 	let currentLang = 'en'
 	let currentChartType = 'daily'
-	let currentSitesPeriod = 'daily' // <-- Новая переменная для периода сайтов
+	let currentSitesPeriod = 'daily'
+	let currentDistributionPeriod = 'daily'
 	let activityChartInstance: Chart | null = null
+	let distributionChartInstance: Chart | null = null
+	let reminderThreshold: number = 30 * 60 * 1000 // 30 minutes
+	let siteCategories: SiteCategory = {}
+	let currentTimezone = 'auto'
+	const defaultCategoryColors: CategoryColor = {
+		work: '#6366f1',
+		learning: '#f59e0b',
+		entertainment: '#ec4899',
+		social: '#06b6d4',
+		shopping: '#10b981',
+		other: '#8b5cf6',
+	}
+
+	const LANGUAGES = [
+		{ id: 'uk', name: 'Українська' },
+		{ id: 'en', name: 'English' },
+		{ id: 'es', name: 'Español' },
+		{ id: 'de', name: 'Deutsch' },
+		{ id: 'fr', name: 'Français' },
+	]
 
 	const THEMES = [
 		{ id: 'monolith', key: 'themeMonolith' },
@@ -36,26 +65,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		{ id: 'solar', key: 'themeSolar' },
 	]
 
-	const LANGUAGES = [
-		{ id: 'ru', name: 'Русский' },
-		{ id: 'uk', name: 'Українська' },
-		{ id: 'en', name: 'English' },
-		{ id: 'es', name: 'Español' },
-		{ id: 'de', name: 'Deutsch' },
-		{ id: 'fr', name: 'Français' },
-	]
-
 	const elements = {
 		periodSelect: document.getElementById('period-select') as HTMLSelectElement,
-		themeButton: document.getElementById('theme-button') as HTMLButtonElement,
 		pauseButton: document.getElementById('pause-button') as HTMLButtonElement,
 		exportButton: document.getElementById('export-button') as HTMLButtonElement,
 		settingsButton: document.getElementById(
 			'settings-button'
 		) as HTMLButtonElement,
-		themeMenu: document.getElementById('theme-menu') as HTMLDivElement,
+
 		langButton: document.getElementById('lang-button') as HTMLButtonElement,
 		langMenu: document.getElementById('lang-menu') as HTMLDivElement,
+		themeButton: document.getElementById('theme-button') as HTMLButtonElement,
+		themeMenu: document.getElementById('theme-menu') as HTMLDivElement,
 		liveHostname: document.getElementById(
 			'live-hostname'
 		) as HTMLParagraphElement,
@@ -82,9 +103,49 @@ document.addEventListener('DOMContentLoaded', () => {
 		sitesDaily: document.getElementById('sites-daily') as HTMLButtonElement,
 		sitesWeekly: document.getElementById('sites-weekly') as HTMLButtonElement,
 		sitesMonthly: document.getElementById('sites-monthly') as HTMLButtonElement,
+		sitesYearly: document.getElementById('sites-yearly') as HTMLButtonElement,
 		activityChart: document.getElementById(
 			'activity-chart'
 		) as HTMLCanvasElement,
+		distributionChart: document.getElementById(
+			'distribution-chart'
+		) as HTMLCanvasElement,
+		distDaily: document.getElementById('dist-daily') as HTMLButtonElement,
+		distWeekly: document.getElementById('dist-weekly') as HTMLButtonElement,
+		distMonthly: document.getElementById('dist-monthly') as HTMLButtonElement,
+		settingsModal: document.getElementById('settings-modal') as HTMLDivElement,
+		modalClose: document.querySelector('.modal-close') as HTMLButtonElement,
+		saveSettingsBtn: document.getElementById(
+			'save-settings-btn'
+		) as HTMLButtonElement,
+		resetThemeBtn: document.getElementById(
+			'reset-theme-btn'
+		) as HTMLButtonElement,
+		reminderTimeInput: document.getElementById(
+			'reminder-time'
+		) as HTMLInputElement,
+		timezoneSelect: document.getElementById(
+			'timezone-select'
+		) as HTMLSelectElement,
+		categoriesButton: document.getElementById(
+			'categories-button'
+		) as HTMLButtonElement,
+		manageCategoriesBtn: document.getElementById(
+			'manage-categories-btn'
+		) as HTMLButtonElement,
+		categoriesModal: document.getElementById(
+			'categories-modal'
+		) as HTMLDivElement,
+		categoriesModalClose: document.getElementById(
+			'categories-modal-close'
+		) as HTMLButtonElement,
+		categoriesCloseBtn: document.getElementById(
+			'categories-close-btn'
+		) as HTMLButtonElement,
+		newSiteInput: document.getElementById('new-site-input') as HTMLInputElement,
+		categoriesList: document.getElementById(
+			'categories-list'
+		) as HTMLDivElement,
 	}
 
 	const formatHMS = (s: number): string => {
@@ -123,12 +184,275 @@ document.addEventListener('DOMContentLoaded', () => {
 		updateDashboard()
 	}
 
+	const openSettingsModal = () => {
+		elements.reminderTimeInput.value = (
+			reminderThreshold /
+			60 /
+			1000
+		).toString()
+		elements.settingsModal.classList.add('show')
+	}
+
+	const closeSettingsModal = () => {
+		elements.settingsModal.classList.remove('show')
+	}
+
+	const saveSettings = () => {
+		const newThreshold = parseInt(elements.reminderTimeInput.value, 10)
+		if (newThreshold > 0) {
+			reminderThreshold = newThreshold * 60 * 1000
+			chrome.runtime.sendMessage({
+				type: 'SET_REMINDER_THRESHOLD',
+				threshold: reminderThreshold,
+			})
+		}
+
+		// Зберегти часовий пояс
+		currentTimezone = elements.timezoneSelect.value
+		chrome.storage.sync.set({ timezone: currentTimezone })
+
+		closeSettingsModal()
+	}
+
+	const resetSettings = () => {
+		reminderThreshold = 30 * 60 * 1000
+		elements.reminderTimeInput.value = '30'
+		chrome.runtime.sendMessage({
+			type: 'SET_REMINDER_THRESHOLD',
+			threshold: reminderThreshold,
+		})
+	}
+
+	// Функція для отримання дати з урахуванням часового поясу
+	const getDateByTimezone = (date: Date = new Date()): string => {
+		let d = new Date(date)
+		if (currentTimezone !== 'auto') {
+			const offset = parseInt(currentTimezone.replace('UTC', ''))
+			d = new Date(d.getTime() + offset * 60 * 60 * 1000)
+		}
+		return d.toISOString().slice(0, 10)
+	}
+
+	// Функції для управління категоріями
+	const saveSiteCategories = () => {
+		chrome.storage.local.set({ siteCategories })
+	}
+
+	const loadSiteCategories = async () => {
+		const data = await chrome.storage.local.get('siteCategories')
+		if (data.siteCategories) {
+			siteCategories = data.siteCategories
+		}
+	}
+
+	const getCategoryEmoji = (category: string): string => {
+		const emojis: { [key: string]: string } = {
+			work: '💼',
+			learning: '📚',
+			entertainment: '🎬',
+			social: '👥',
+			shopping: '🛍️',
+			other: '📌',
+		}
+		return emojis[category] || '📌'
+	}
+
+	const renderCategoryButtons = () => {
+		const container = document.getElementById(
+			'category-buttons-container'
+		) as HTMLDivElement
+		if (!container) return
+
+		container.innerHTML = ''
+		const categories = Object.keys(defaultCategoryColors)
+
+		categories.forEach(category => {
+			const btn = document.createElement('button')
+			const color = defaultCategoryColors[category]
+			const emoji = getCategoryEmoji(category)
+
+			btn.innerHTML = `${emoji} ${
+				category.charAt(0).toUpperCase() + category.slice(1)
+			}`
+			btn.style.padding = '8px 10px'
+			btn.style.borderRadius = '6px'
+			btn.style.border = `1.5px solid ${color}`
+			btn.style.background = `rgba(${parseInt(
+				color.slice(1, 3),
+				16
+			)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+				color.slice(5, 7),
+				16
+			)}, 0.1)`
+			btn.style.color = color
+			btn.style.cursor = 'pointer'
+			btn.style.fontSize = '12px'
+			btn.style.fontWeight = '500'
+			btn.style.transition = 'all 0.2s'
+			btn.style.whiteSpace = 'nowrap'
+			btn.dataset.category = category
+
+			btn.onmouseenter = () => {
+				btn.style.background = `rgba(${parseInt(
+					color.slice(1, 3),
+					16
+				)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+					color.slice(5, 7),
+					16
+				)}, 0.2)`
+			}
+			btn.onmouseleave = () => {
+				btn.style.background = `rgba(${parseInt(
+					color.slice(1, 3),
+					16
+				)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+					color.slice(5, 7),
+					16
+				)}, 0.1)`
+			}
+
+			btn.onclick = () => {
+				const site = elements.newSiteInput.value.trim()
+				if (!site) {
+					showError('Please enter a site name first')
+					return
+				}
+				siteCategories[site] = category
+				saveSiteCategories()
+				elements.newSiteInput.value = ''
+				renderCategoriesList()
+				renderCategoryButtons()
+			}
+
+			container.appendChild(btn)
+		})
+	}
+
+	const renderCategoriesList = () => {
+		elements.categoriesList.innerHTML = ''
+		const categories: { [key: string]: string[] } = {}
+
+		// Групувати сайти за категоріями
+		for (const [host, cat] of Object.entries(siteCategories)) {
+			if (!categories[cat]) categories[cat] = []
+			categories[cat].push(host.toLowerCase())
+		}
+
+		if (Object.keys(categories).length === 0) {
+			const emptyMsg = document.createElement('div')
+			emptyMsg.style.textAlign = 'center'
+			emptyMsg.style.padding = '24px'
+			emptyMsg.style.color = 'rgba(255,255,255,0.5)'
+			emptyMsg.style.fontSize = '13px'
+			emptyMsg.textContent = 'No categories yet. Add a site to get started!'
+			elements.categoriesList.appendChild(emptyMsg)
+			return
+		}
+
+		// Вивести кожну категорію
+		const orderedCategories = Object.keys(defaultCategoryColors)
+		for (const category of orderedCategories) {
+			const sites = categories[category]
+			if (!sites) continue
+
+			const color = defaultCategoryColors[category]
+			const emoji = getCategoryEmoji(category)
+
+			const categoryDiv = document.createElement('div')
+			categoryDiv.style.padding = '10px'
+			categoryDiv.style.borderRadius = '8px'
+			categoryDiv.style.border = `1.5px solid ${color}`
+			categoryDiv.style.background = `rgba(${parseInt(
+				color.slice(1, 3),
+				16
+			)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
+				color.slice(5, 7),
+				16
+			)}, 0.08)`
+
+			const title = document.createElement('div')
+			title.style.fontWeight = '600'
+			title.style.marginBottom = '8px'
+			title.style.color = color
+			title.style.fontSize = '12px'
+			title.innerHTML = `${emoji} ${category.toUpperCase()} (${sites.length})`
+
+			const sitesList = document.createElement('div')
+			sitesList.style.display = 'flex'
+			sitesList.style.flexDirection = 'column'
+			sitesList.style.gap = '4px'
+
+			sites.forEach(host => {
+				const siteRow = document.createElement('div')
+				siteRow.style.display = 'flex'
+				siteRow.style.justifyContent = 'space-between'
+				siteRow.style.alignItems = 'center'
+				siteRow.style.padding = '4px 6px'
+				siteRow.style.borderRadius = '4px'
+				siteRow.style.background = 'rgba(255,255,255,0.03)'
+				siteRow.style.fontSize = '12px'
+
+				const span = document.createElement('span')
+				span.textContent = host
+				span.style.wordBreak = 'break-all'
+
+				const btn = document.createElement('button')
+				btn.textContent = '✕'
+				btn.style.background = 'none'
+				btn.style.border = 'none'
+				btn.style.color = 'rgba(255,255,255,0.5)'
+				btn.style.cursor = 'pointer'
+				btn.style.padding = '0 4px'
+				btn.style.fontSize = '14px'
+				btn.style.transition = 'all 0.2s'
+				btn.style.marginLeft = '8px'
+				btn.style.flexShrink = '0'
+
+				btn.onmouseenter = () => {
+					btn.style.color = '#ff4444'
+				}
+				btn.onmouseleave = () => {
+					btn.style.color = 'rgba(255,255,255,0.5)'
+				}
+
+				btn.onclick = () => {
+					delete siteCategories[host]
+					saveSiteCategories()
+					renderCategoriesList()
+					renderCategoryButtons()
+				}
+
+				siteRow.appendChild(span)
+				siteRow.appendChild(btn)
+				sitesList.appendChild(siteRow)
+			})
+
+			categoryDiv.appendChild(title)
+			categoryDiv.appendChild(sitesList)
+			elements.categoriesList.appendChild(categoryDiv)
+		}
+	}
+
+	const openCategoriesModal = () => {
+		elements.categoriesModal.classList.add('show')
+		renderCategoriesList()
+		renderCategoryButtons()
+	}
+
+	const closeCategoriesModal = () => {
+		elements.categoriesModal.classList.remove('show')
+	}
+
 	const init = async () => {
 		try {
 			const syncData = (await chrome.storage.sync.get({
 				theme: 'monolith',
 				language: 'en',
+				timezone: 'auto',
 			})) as SyncData
+
+			currentTimezone = syncData.timezone || 'auto'
+			await loadSiteCategories()
 
 			chrome.runtime.sendMessage({ type: 'GET_CURRENT_STATE' }, response => {
 				if (chrome.runtime.lastError) {
@@ -154,8 +478,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	const setupUI = (syncData: SyncData) => {
 		setLanguage(syncData.language)
 		buildLangMenu()
-		applyTheme(syncData.theme)
 		buildThemeMenu()
+		applyTheme(syncData.theme)
+		updateUsageDays()
+		setupFeedbackButton()
 
 		elements.periodSelect.addEventListener('change', () => updateDashboard())
 		elements.pauseButton.addEventListener('click', () => {
@@ -185,7 +511,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			setChartType('monthly')
 		)
 
-		// Новые обработчики для кнопок сайтов
 		elements.sitesDaily.addEventListener('click', () => setSitesPeriod('daily'))
 		elements.sitesWeekly.addEventListener('click', () =>
 			setSitesPeriod('weekly')
@@ -193,12 +518,63 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.sitesMonthly.addEventListener('click', () =>
 			setSitesPeriod('monthly')
 		)
+		elements.sitesYearly.addEventListener('click', () =>
+			setSitesPeriod('yearly')
+		)
 
-		elements.themeButton.addEventListener('click', e => {
-			e.stopPropagation()
-			toggleMenu(elements.themeMenu)
-			hideMenu(elements.langMenu)
+		elements.distDaily.addEventListener('click', () =>
+			setDistributionPeriod('daily')
+		)
+		elements.distWeekly.addEventListener('click', () =>
+			setDistributionPeriod('weekly')
+		)
+		elements.distMonthly.addEventListener('click', () =>
+			setDistributionPeriod('monthly')
+		)
+
+		elements.modalClose.addEventListener('click', closeSettingsModal)
+		elements.saveSettingsBtn.addEventListener('click', saveSettings)
+		elements.resetThemeBtn.addEventListener('click', resetSettings)
+
+		document.addEventListener('click', e => {
+			const target = e.target as HTMLElement
+			if (
+				elements.settingsModal.classList.contains('show') &&
+				target === elements.settingsModal
+			) {
+				closeSettingsModal()
+			}
 		})
+
+		elements.settingsButton.addEventListener('click', () => {
+			openSettingsModal()
+		})
+
+		elements.categoriesButton.addEventListener('click', () => {
+			openCategoriesModal()
+		})
+
+		elements.manageCategoriesBtn.addEventListener('click', () => {
+			openCategoriesModal()
+		})
+
+		elements.categoriesModalClose.addEventListener(
+			'click',
+			closeCategoriesModal
+		)
+		elements.categoriesCloseBtn.addEventListener('click', closeCategoriesModal)
+
+		document.addEventListener('click', e => {
+			const target = e.target as HTMLElement
+			if (
+				elements.categoriesModal.classList.contains('show') &&
+				target === elements.categoriesModal
+			) {
+				closeCategoriesModal()
+			}
+		})
+
+		elements.timezoneSelect.value = currentTimezone
 
 		elements.langButton.addEventListener('click', e => {
 			e.stopPropagation()
@@ -206,21 +582,27 @@ document.addEventListener('DOMContentLoaded', () => {
 			hideMenu(elements.themeMenu)
 		})
 
+		elements.themeButton.addEventListener('click', e => {
+			e.stopPropagation()
+			toggleMenu(elements.themeMenu)
+			hideMenu(elements.langMenu)
+		})
+
 		document.addEventListener('click', e => {
 			const target = e.target as Node
-			if (
-				elements.themeMenu &&
-				!elements.themeMenu.contains(target) &&
-				target !== elements.themeButton
-			) {
-				hideMenu(elements.themeMenu)
-			}
 			if (
 				elements.langMenu &&
 				!elements.langMenu.contains(target) &&
 				target !== elements.langButton
 			) {
 				hideMenu(elements.langMenu)
+			}
+			if (
+				elements.themeMenu &&
+				!elements.themeMenu.contains(target) &&
+				target !== elements.themeButton
+			) {
+				hideMenu(elements.themeMenu)
 			}
 		})
 
@@ -247,7 +629,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 	}
 
-	// Новая функция для установки периода сайтов
 	const setSitesPeriod = (period: string) => {
 		currentSitesPeriod = period
 		document.querySelectorAll('.sites-toggle button').forEach(btn => {
@@ -255,6 +636,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 		document.getElementById(`sites-${period}`)?.classList.add('active')
 		updateDashboard()
+	}
+
+	const setDistributionPeriod = (period: string) => {
+		currentDistributionPeriod = period
+		document
+			.querySelectorAll('.chart-toggle:has(#dist-daily) button')
+			.forEach(btn => {
+				btn.classList.remove('active')
+			})
+		document.getElementById(`dist-${period}`)?.classList.add('active')
+		renderDistributionChart()
 	}
 
 	const toggleMenu = (menu: HTMLElement) => {
@@ -273,14 +665,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		menu.classList.remove('show')
 	}
 
-	// Функция `updateDashboard` теперь учитывает оба периода
 	const updateDashboard = () => {
 		const period = elements.periodSelect.value
 		const now = new Date()
 		let startDate: Date, prevStartDate: Date, titleKey: string
 		let sitesStartDate: Date
 
-		// Логика для карточки "Общая сводка" (без изменений)
 		switch (period) {
 			case 'today':
 				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -304,13 +694,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				prevStartDate = new Date(new Date().setMonth(now.getMonth() - 1))
 				titleKey = 'periodMonth'
 				break
-			default: // year
+			default:
 				startDate = new Date(now.getFullYear(), 0, 1)
 				prevStartDate = new Date(new Date().setFullYear(now.getFullYear() - 1))
 				titleKey = 'periodYear'
 		}
 
-		// Новая логика для определения периода "Топ Сайтов"
 		switch (currentSitesPeriod) {
 			case 'weekly':
 				const dayOfWeekSites = now.getDay()
@@ -323,7 +712,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			case 'monthly':
 				sitesStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
 				break
-			default: // daily
+			case 'yearly':
+				sitesStartDate = new Date(now.getFullYear(), 0, 1)
+				break
+			default:
 				sitesStartDate = new Date(
 					now.getFullYear(),
 					now.getMonth(),
@@ -342,6 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		renderSummary(currentPeriodRecords, prevPeriodRecords)
 		renderSitesList(sitesRecords)
+		renderDistributionChart()
 	}
 
 	const getRecordsForPeriod = (
@@ -391,7 +784,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function renderSitesList(records: { [host: string]: number }) {
 		const sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
-		// elements.sitesCount.textContent = sortedSites.length.toString() // Этот элемент удален из HTML
 
 		elements.sitesListContainer.style.opacity = '0'
 		elements.sitesListContainer.style.transform = 'translateY(10px)'
@@ -495,27 +887,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		})
 
-		buildThemeMenu()
 		if (Object.keys(dailyStats).length > 0) {
 			updateDashboard()
 			renderActivityChart()
 		}
-	}
-
-	const buildThemeMenu = () => {
-		elements.themeMenu.innerHTML = ''
-		THEMES.forEach(theme => {
-			const button = document.createElement('button')
-			button.innerHTML = `<div class="theme-dot" data-theme="${
-				theme.id
-			}"></div> ${translations[currentLang][theme.key]}`
-			button.onclick = () => {
-				applyTheme(theme.id)
-				chrome.storage.sync.set({ theme: theme.id })
-				hideMenu(elements.themeMenu)
-			}
-			elements.themeMenu.appendChild(button)
-		})
 	}
 
 	const buildLangMenu = () => {
@@ -529,6 +904,25 @@ document.addEventListener('DOMContentLoaded', () => {
 				hideMenu(elements.langMenu)
 			}
 			elements.langMenu.appendChild(button)
+		})
+	}
+
+	const buildThemeMenu = () => {
+		const themeMenu = document.getElementById('theme-menu') as HTMLDivElement
+		if (!themeMenu) return
+
+		themeMenu.innerHTML = ''
+		THEMES.forEach(theme => {
+			const button = document.createElement('button')
+			button.innerHTML = `<div class="theme-dot" data-theme="${
+				theme.id
+			}"></div> ${translations[currentLang][theme.key]}`
+			button.onclick = () => {
+				applyTheme(theme.id)
+				chrome.storage.sync.set({ theme: theme.id })
+				hideMenu(themeMenu)
+			}
+			themeMenu.appendChild(button)
 		})
 	}
 
@@ -775,6 +1169,138 @@ document.addEventListener('DOMContentLoaded', () => {
 		return translations[currentLang][monthKey] || monthKey
 	}
 
+	const renderDistributionChart = () => {
+		const ctx = elements.distributionChart.getContext('2d')
+		if (!ctx || Object.keys(dailyStats).length === 0) return
+
+		if (distributionChartInstance) {
+			distributionChartInstance.destroy()
+		}
+
+		const now = new Date()
+		let startDate: Date
+
+		// Визначити дату початку на основі періоду
+		switch (currentDistributionPeriod) {
+			case 'weekly':
+				const dayOfWeekDist = now.getDay()
+				startDate = new Date(
+					now.getFullYear(),
+					now.getMonth(),
+					now.getDate() - dayOfWeekDist + (dayOfWeekDist === 0 ? -6 : 1)
+				)
+				break
+			case 'monthly':
+				startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+				break
+			default: // 'daily'
+				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+		}
+
+		// Get top 5 sites за вибраний період
+		const allSites: { [host: string]: number } = {}
+		for (const dayKey in dailyStats) {
+			const dayDate = new Date(dayKey)
+			dayDate.setHours(0, 0, 0, 0)
+
+			if (dayDate >= startDate) {
+				for (const host in dailyStats[dayKey]) {
+					allSites[host] = (allSites[host] || 0) + dailyStats[dayKey][host]
+				}
+			}
+		}
+
+		const topSites = Object.entries(allSites)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 5)
+
+		const labels = topSites.map(([host]) => formatHostname(host))
+		const data = topSites.map(([_, time]) =>
+			parseFloat((time / 3600).toFixed(1))
+		)
+
+		const themeColors = getThemeColors()
+		const accentColor = themeColors.accent
+
+		const colors = [
+			accentColor,
+			themeColors.accentLight,
+			'rgba(79, 70, 229, 0.6)',
+			'rgba(79, 70, 229, 0.4)',
+			'rgba(79, 70, 229, 0.2)',
+		]
+
+		const glassText =
+			getComputedStyle(document.body)
+				.getPropertyValue('--text-secondary')
+				.trim() || '#a3a3a3'
+
+		distributionChartInstance = new Chart(ctx, {
+			type: 'doughnut',
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						data: data,
+						backgroundColor: colors,
+						borderColor:
+							getComputedStyle(document.body)
+								.getPropertyValue('--glass-bg')
+								.trim() || 'rgba(20, 20, 20, 0.6)',
+						borderWidth: 2,
+					},
+				],
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: {
+							color: glassText,
+							font: { size: 12 },
+							padding: 15,
+						},
+					},
+					tooltip: {
+						backgroundColor:
+							getComputedStyle(document.body)
+								.getPropertyValue('--glass-bg')
+								.trim() || 'rgba(20, 20, 20, 0.6)',
+						titleColor:
+							getComputedStyle(document.body)
+								.getPropertyValue('--text-primary')
+								.trim() || '#f5f5f5',
+						bodyColor: glassText,
+						callbacks: {
+							label: function (context) {
+								const hours = Math.floor((context.parsed as number) / 1)
+								const minutes = Math.round(
+									((context.parsed as number) % 1) * 60
+								)
+								return `${hours}h ${minutes}m`
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
+	const getThemeColors = () => {
+		const theme = document.body.dataset.theme || 'monolith'
+		const themeColors: {
+			[key: string]: { accent: string; accentLight: string }
+		} = {
+			monolith: { accent: '#4f46e5', accentLight: '#6366f1' },
+			nord: { accent: '#88c0d0', accentLight: '#8fbcbb' },
+			solar: { accent: '#268bd2', accentLight: '#2aa198' },
+			matcha: { accent: '#6aa378', accentLight: '#81b29a' },
+		}
+		return themeColors[theme] || themeColors.monolith
+	}
+
 	let resizeTimer: number
 	window.addEventListener('resize', () => {
 		clearTimeout(resizeTimer)
@@ -784,6 +1310,27 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		}, 250)
 	})
+
+	// Підрахунок днів користування та оновлення в меню налаштувань
+	function updateUsageDays() {
+		const usageDays = Object.keys(dailyStats).length
+		const el = document.getElementById('usage-days')
+		if (el) {
+			el.textContent = `Днів користування: ${usageDays}`
+		}
+	}
+
+	// Кнопка "Залишити відгук" (тимчасово alert)
+	function setupFeedbackButton() {
+		const btn = document.getElementById('feedback-btn')
+		if (btn) {
+			btn.addEventListener('click', () => {
+				alert(
+					'Дякуємо за бажання залишити відгук! Незабаром тут зʼявиться форма.'
+				)
+			})
+		}
+	}
 
 	init()
 })
