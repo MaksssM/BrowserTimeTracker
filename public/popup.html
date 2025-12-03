@@ -47,7 +47,7 @@
 
 					<button
 						id="lang-button"
-						title="Language (EN/UK/ES/DE/FR)"
+						title="Language (EN/UA/ES/DE/FR)"
 						class="tooltip-trigger"
 					>
 						EN
@@ -214,6 +214,60 @@
 						<h3 id="summary-title"></h3>
 						<h2 id="summary-time">00:00:00</h2>
 						<p id="comparison-insight">...</p>
+						<div
+							id="productivity-score-container"
+							style="
+								margin-top: 12px;
+								padding-top: 12px;
+								border-top: 1px solid var(--border);
+							"
+						>
+							<div
+								style="
+									display: flex;
+									justify-content: space-between;
+									align-items: center;
+									margin-bottom: 4px;
+								"
+							>
+								<span
+									style="
+										font-size: 12px;
+										font-weight: 500;
+										color: var(--text-muted);
+									"
+									data-i18n-key="productivityScore"
+									>Productivity Score</span
+								>
+								<span
+									id="productivity-score-value"
+									style="
+										font-size: 14px;
+										font-weight: 700;
+										color: var(--text-main);
+									"
+									>0%</span
+								>
+							</div>
+							<div
+								style="
+									height: 6px;
+									background: var(--surface-hover);
+									border-radius: 3px;
+									overflow: hidden;
+								"
+							>
+								<div
+									id="productivity-bar"
+									style="
+										height: 100%;
+										width: 0%;
+										background: var(--success);
+										transition: width 0.5s ease;
+									"
+								></div>
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -295,6 +349,7 @@
 						<button id="chart-monthly" data-i18n-key="chartMonthly">
 							Months
 						</button>
+						<button id="chart-yearly" data-i18n-key="chartYearly">Years</button>
 					</div>
 					<div class="chart-container">
 						<canvas id="activity-chart"></canvas>
@@ -332,6 +387,7 @@
 						<button id="dist-monthly" data-i18n-key="chartMonthly">
 							Months
 						</button>
+						<button id="dist-yearly" data-i18n-key="chartYearly">Years</button>
 					</div>
 					<div class="chart-container">
 						<canvas id="distribution-chart"></canvas>
@@ -347,20 +403,6 @@
 					<button class="modal-close">&times;</button>
 				</div>
 				<div class="modal-body">
-					<div class="settings-group">
-						<label for="reminder-time" data-i18n-key="timeWarning"
-							>Reminder Time (minutes)</label
-						>
-						<input type="number" id="reminder-time" min="5" max="240" />
-					</div>
-
-					<div class="settings-group">
-						<label for="sound-toggle" data-i18n-key="soundNotification"
-							>Sound Notification</label
-						>
-						<input type="checkbox" id="sound-toggle" />
-					</div>
-
 					<div class="settings-group">
 						<label for="timezone-select" data-i18n-key="timezone"
 							>Timezone</label
@@ -422,29 +464,11 @@
 						class="settings-group"
 						style="font-size: 13px; color: var(--text-secondary, #888)"
 					>
-						<strong
-							>BrowserTimeTracker
-							<span style="font-weight: normal">v1.0</span></strong
-						><br />
-						<span data-i18n-key="author">Author</span>:
-						<a
-							href="https://github.com/MaksssM"
-							target="_blank"
-							style="color: var(--accent-color, #4f46e5)"
-							>MaksssM</a
-						><br />
 						<a
 							href="https://github.com/MaksssM/BrowserTimeTracker"
 							target="_blank"
 							style="color: var(--accent-color, #4f46e5)"
-							>GitHub</a
-						>
-						&nbsp;|&nbsp;
-						<a
-							href="https://your-privacy-policy-link"
-							target="_blank"
-							style="color: var(--accent-color, #4f46e5)"
-							>Privacy Policy</a
+							>GitHub Project</a
 						>
 						<p id="usage-days" style="margin: 8px 0 0 0; font-weight: bold">
 							...
@@ -563,7 +587,7 @@
 					<button
 						id="save-settings-btn"
 						class="btn-primary"
-						data-i18n-key="exportData"
+						data-i18n-key="saveSettings"
 					>
 						Save
 					</button>

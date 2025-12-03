@@ -3,7 +3,7 @@
 	"name": "Zenith Dashboard Pro",
 	"version": "1.0",
 	"description": "A powerful dashboard extension for enhanced productivity.",
-	"permissions": ["tabs", "storage", "alarms"],
+	"permissions": ["tabs", "storage", "alarms", "contextMenus"],
 	"background": {
 		"service_worker": "background.js",
 		"type": "module"

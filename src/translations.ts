@@ -7,7 +7,7 @@ type Translations = {
 }
 
 export const translations: Translations = {
-	uk: {
+	ua: {
 		headerTitle: 'Статистика',
 		periodToday: 'Сьогодні',
 		periodWeek: 'Тиждень',
@@ -113,6 +113,9 @@ export const translations: Translations = {
 		noCategories: 'Категорій ще немає. Додайте сайт, щоб почати!',
 		enterSiteName: 'Будь ласка, спочатку введіть назву сайту',
 		placeholderSite: 'example.com або example.org',
+		productivityScore: 'Оцінка продуктивності',
+		addToCategory: 'Додати в категорію',
+		saveSettings: 'Зберегти',
 	},
 	en: {
 		headerTitle: 'Statistics',
@@ -217,6 +220,9 @@ export const translations: Translations = {
 		noCategories: 'No categories yet. Add a site to get started!',
 		enterSiteName: 'Please enter a site name first',
 		placeholderSite: 'example.com or example.org',
+		productivityScore: 'Productivity Score',
+		addToCategory: 'Add to category',
+		saveSettings: 'Save',
 	},
 	es: {
 		headerTitle: 'Estadísticas',
@@ -324,6 +330,9 @@ export const translations: Translations = {
 		noCategories: 'Aún no hay categorías. ¡Añade un sitio para empezar!',
 		enterSiteName: 'Por favor, introduzca primero el nombre del sitio',
 		placeholderSite: 'example.com o example.org',
+		productivityScore: 'Puntuación de productividad',
+		addToCategory: 'Añadir a categoría',
+		saveSettings: 'Guardar',
 	},
 	de: {
 		headerTitle: 'Statistiken',
@@ -431,6 +440,9 @@ export const translations: Translations = {
 			'Noch keine Kategorien. Fügen Sie eine Website hinzu, um zu beginnen!',
 		enterSiteName: 'Bitte geben Sie zuerst einen Website-Namen ein',
 		placeholderSite: 'example.com oder example.org',
+		productivityScore: 'Produktivitätsbewertung',
+		addToCategory: 'Zur Kategorie hinzufügen',
+		saveSettings: 'Speichern',
 	},
 	fr: {
 		headerTitle: 'Statistiques',
@@ -442,7 +454,7 @@ export const translations: Translations = {
 		tooltipPause: 'Pause/Reprendre',
 		tooltipExport: 'Exporter les données',
 		tooltipSettings: 'Paramètres',
-		cardTitleLive: 'Actuellement Actif',
+		cardTitleLive: 'Actualmente Actif',
 		cardTitleSummary: 'Résumé Général',
 		cardTitleSites: 'Top Sites',
 		cardTitleTrend: "Graphique d'Activité",
@@ -538,5 +550,8 @@ export const translations: Translations = {
 		noCategories: 'Pas encore de catégories. Ajoutez un site pour commencer !',
 		enterSiteName: "Veuillez d'abord entrer un nom de site",
 		placeholderSite: 'example.com ou example.org',
+		productivityScore: 'Score de productivité',
+		addToCategory: 'Ajouter à la catégorie',
+		saveSettings: 'Enregistrer',
 	},
 }
