@@ -105,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		chartWeekly: document.getElementById('chart-weekly') as HTMLButtonElement,
 		chartMonthly: document.getElementById('chart-monthly') as HTMLButtonElement,
 		chartYearly: document.getElementById('chart-yearly') as HTMLButtonElement,
-		// Новые элементы для кнопок сайтов
 		sitesDaily: document.getElementById('sites-daily') as HTMLButtonElement,
 		sitesWeekly: document.getElementById('sites-weekly') as HTMLButtonElement,
 		sitesMonthly: document.getElementById('sites-monthly') as HTMLButtonElement,
@@ -194,14 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	const saveSettings = () => {
-		// Зберегти часовий пояс
 		currentTimezone = elements.timezoneSelect.value
 		chrome.storage.sync.set({ timezone: currentTimezone })
 
 		closeSettingsModal()
 	}
 
-	// Функції для управління категоріями
 	const saveSiteCategories = () => {
 		chrome.storage.local.set({ siteCategories })
 	}
@@ -891,7 +888,6 @@ document.addEventListener('DOMContentLoaded', () => {
 							.join('')
 					: `<p class="placeholder">${translations[currentLang].statusNoData}</p>`
 
-			// Додаємо обробники подій для кнопок
 			document.querySelectorAll('.site-category-btn').forEach(btn => {
 				const btnElement = btn as HTMLElement
 				btnElement.addEventListener('mouseenter', () => {
@@ -1315,7 +1311,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		const now = new Date()
 		let startDate: Date
 
-		// Визначити дату початку на основі періоду
 		switch (currentDistributionPeriod) {
 			case 'weekly':
 				const dayOfWeekDist = now.getDay()
@@ -1335,7 +1330,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 		}
 
-		// Get top 5 sites за вибраний період
 		const allSites: { [host: string]: number } = {}
 		for (const dayKey in dailyStats) {
 			const dayDate = new Date(dayKey)
@@ -1449,7 +1443,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		}, 250)
 	})
 
-	// Підрахунок днів користування та оновлення в меню налаштувань
 	function updateUsageDays() {
 		const usageDays = Object.keys(dailyStats).length
 		const el = document.getElementById('usage-days')

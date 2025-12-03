@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Zenith Dashboard Pro</title>
+		<title>Zenith Dashboard</title>
 		<link rel="stylesheet" href="style.css" />
 		<script src="lib/chart.umd.min.js"></script>
 		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -595,7 +595,6 @@
 			</div>
 		</div>
 
-		<!-- Модальне вікно для управління категоріями -->
 		<div id="categories-modal" class="modal">
 			<div class="modal-content modal-large">
 				<div class="modal-header">
@@ -605,7 +604,6 @@
 					</button>
 				</div>
 				<div class="modal-body flex-column">
-					<!-- Секція для додавання нових сайтів -->
 					<div class="add-site-section">
 						<div class="section-label" data-i18n-key="addNewSite">
 							Add New Site
@@ -619,12 +617,12 @@
 								data-i18n-key-placeholder="placeholderSite"
 							/>
 						</div>
-						<div class="category-buttons-grid" id="category-buttons-container">
-							<!-- Динамично генерируются кнопки категорий -->
-						</div>
+						<div
+							class="category-buttons-grid"
+							id="category-buttons-container"
+						></div>
 					</div>
 
-					<!-- Список категорий с сайтами -->
 					<div class="categories-list-section">
 						<div class="section-label" data-i18n-key="yourCategories">
 							Your Categories
