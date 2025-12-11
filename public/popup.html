@@ -294,6 +294,57 @@
 								Top Sites
 							</h3>
 						</div>
+						<div class="sites-controls">
+							<div class="search-container">
+								<input
+									type="text"
+									id="sites-search"
+									class="search-input"
+									placeholder="Search sites..."
+									data-i18n-key-placeholder="searchSites"
+								/>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									class="search-icon"
+								>
+									<circle cx="11" cy="11" r="8"></circle>
+									<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+								</svg>
+							</div>
+						</div>
+						<div
+							id="bulk-actions-panel"
+							class="bulk-actions-panel"
+							style="display: none"
+						>
+							<button
+								id="bulk-select-all"
+								class="btn-secondary btn-sm"
+								data-i18n-key="selectAll"
+							>
+								Select All
+							</button>
+							<button
+								id="bulk-move-btn"
+								class="btn-primary btn-sm"
+								data-i18n-key="moveToCategory"
+							>
+								Move to Category
+							</button>
+							<button
+								id="bulk-cancel-btn"
+								class="btn-secondary btn-sm"
+								data-i18n-key="close"
+							>
+								Cancel
+							</button>
+						</div>
 						<div class="chart-toggle sites-toggle">
 							<button
 								id="sites-daily"
@@ -604,6 +655,35 @@
 					</button>
 				</div>
 				<div class="modal-body flex-column">
+					<div class="create-category-section">
+						<div class="section-label" data-i18n-key="createCategory">
+							Create Category
+						</div>
+						<div class="input-row">
+							<input
+								type="text"
+								id="new-category-name"
+								placeholder="Category Name"
+								class="modern-input"
+								data-i18n-key-placeholder="categoryName"
+							/>
+							<input
+								type="color"
+								id="new-category-color"
+								value="#6366f1"
+								class="color-input"
+								title="Color"
+							/>
+							<button
+								id="create-category-btn"
+								class="btn-primary"
+								data-i18n-key="create"
+							>
+								Create
+							</button>
+						</div>
+					</div>
+
 					<div class="add-site-section">
 						<div class="section-label" data-i18n-key="addNewSite">
 							Add New Site

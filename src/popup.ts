@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	let currentState: CurrentState = { isPaused: false }
 	let liveTimerInterval: number | null = null
 	let currentLang = 'en'
+	let currentSearchQuery = ''
 	let currentChartType = 'daily'
 	let currentSitesPeriod = 'daily'
 	let currentDistributionPeriod = 'daily'
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		shopping: '#10b981',
 		other: '#8b5cf6',
 	}
+	let categoryColors: CategoryColor = { ...defaultCategoryColors }
 
 	const LANGUAGES = [
 		{ id: 'ua', name: 'Українська' },
@@ -62,6 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		{ id: 'nord', key: 'themeNord' },
 		{ id: 'matcha', key: 'themeMatcha' },
 		{ id: 'solar', key: 'themeSolar' },
+		{ id: 'cyberpunk', key: 'themeCyberpunk' },
+		{ id: 'dracula', key: 'themeDracula' },
+		{ id: 'latte', key: 'themeLatte' },
+		{ id: 'coffee', key: 'themeCoffee' },
+		{ id: 'ocean', key: 'themeOcean' },
+		{ id: 'forest', key: 'themeForest' },
+		{ id: 'sunset', key: 'themeSunset' },
+		{ id: 'nebula', key: 'themeNebula' },
 	]
 
 	const elements = {
@@ -146,6 +156,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		categoriesList: document.getElementById(
 			'categories-list'
 		) as HTMLDivElement,
+		siteSearch: document.getElementById('sites-search') as HTMLInputElement,
+		bulkActionsPanel: document.getElementById(
+			'bulk-actions-panel'
+		) as HTMLDivElement,
+		selectedCount: document.getElementById('selected-count') as HTMLSpanElement,
+		bulkCategoryBtn: document.getElementById(
+			'bulk-category-btn'
+		) as HTMLButtonElement,
+		bulkDeleteBtn: document.getElementById(
+			'bulk-delete-btn'
+		) as HTMLButtonElement,
+		bulkCancelBtn: document.getElementById(
+			'bulk-cancel-btn'
+		) as HTMLButtonElement,
+		newCategoryName: document.getElementById(
+			'new-category-name'
+		) as HTMLInputElement,
+		newCategoryColor: document.getElementById(
+			'new-category-color'
+		) as HTMLInputElement,
+		createCategoryBtn: document.getElementById(
+			'create-category-btn'
+		) as HTMLButtonElement,
 	}
 
 	const formatHMS = (s: number): string => {
@@ -210,6 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	const saveCategoryColors = () => {
+		chrome.storage.local.set({ categoryColors })
+	}
+
+	const loadCategoryColors = async () => {
+		const data = await chrome.storage.local.get('categoryColors')
+		if (data.categoryColors) {
+			categoryColors = { ...defaultCategoryColors, ...data.categoryColors }
+		}
+	}
+
 	const getCategoryEmoji = (category: string): string => {
 		const emojis: { [key: string]: string } = {
 			work: '💼',
@@ -229,11 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (!container) return
 
 		container.innerHTML = ''
-		const categories = Object.keys(defaultCategoryColors)
+		const categories = Object.keys(categoryColors)
 
 		categories.forEach(category => {
 			const btn = document.createElement('button')
-			const color = defaultCategoryColors[category]
+			const color = categoryColors[category]
 			const emoji = getCategoryEmoji(category)
 			const categoryName =
 				translations[currentLang][
@@ -279,20 +323,36 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 
 			btn.onclick = () => {
-				const site = elements.newSiteInput.value.trim().toLowerCase()
-				if (!site) {
-					showError(
-						translations[currentLang]?.enterSiteName ||
-							'Please enter a site name first'
-					)
-					return
+				const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+				if (checkedBoxes.length > 0) {
+					checkedBoxes.forEach((cb: any) => {
+						const host = cb.getAttribute('data-host')
+						siteCategories[host] = category
+					})
+					saveSiteCategories()
+
+					checkedBoxes.forEach((cb: any) => {
+						cb.checked = false
+					})
+					updateBulkActionsState()
+					closeCategoriesModal()
+					updateDashboard()
+				} else {
+					const site = elements.newSiteInput.value.trim().toLowerCase()
+					if (!site) {
+						showError(
+							translations[currentLang]?.enterSiteName ||
+								'Please enter a site name first'
+						)
+						return
+					}
+					siteCategories[site] = category
+					saveSiteCategories()
+					elements.newSiteInput.value = ''
+					renderCategoriesList()
+					renderCategoryButtons()
+					updateDashboard()
 				}
-				siteCategories[site] = category
-				saveSiteCategories()
-				elements.newSiteInput.value = ''
-				renderCategoriesList()
-				renderCategoryButtons()
-				updateDashboard() // Оновити список сайтів з новим значком
 			}
 
 			container.appendChild(btn)
@@ -323,12 +383,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		// Вивести кожну категорію
-		const orderedCategories = Object.keys(defaultCategoryColors)
+		const orderedCategories = Object.keys(categoryColors)
 		for (const category of orderedCategories) {
 			const sites = categories[category]
 			if (!sites) continue
 
-			const color = defaultCategoryColors[category]
+			const color = categoryColors[category]
 			const emoji = getCategoryEmoji(category)
 			const categoryName =
 				translations[currentLang][
@@ -468,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			currentLang = syncData.language || 'en'
 			currentTimezone = syncData.timezone || 'auto'
 			await loadSiteCategories()
+			await loadCategoryColors()
 
 			chrome.runtime.sendMessage({ type: 'GET_CURRENT_STATE' }, response => {
 				if (chrome.runtime.lastError) {
@@ -490,6 +551,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	const updateBulkActionsState = () => {
+		const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+		const count = checkedBoxes.length
+
+		if (count > 0) {
+			elements.bulkActionsPanel.classList.add('visible')
+			elements.selectedCount.textContent = `${count} selected`
+		} else {
+			elements.bulkActionsPanel.classList.remove('visible')
+		}
+	}
+
 	const setupUI = (syncData: SyncData) => {
 		setLanguage(syncData.language)
 		buildLangMenu()
@@ -497,6 +570,76 @@ document.addEventListener('DOMContentLoaded', () => {
 		applyTheme(syncData.theme)
 		updateUsageDays()
 		setupFeedbackButton()
+
+		elements.siteSearch?.addEventListener('input', e => {
+			currentSearchQuery = (e.target as HTMLInputElement).value
+			updateDashboard()
+		})
+
+		elements.bulkCancelBtn?.addEventListener('click', () => {
+			document.querySelectorAll('.site-checkbox:checked').forEach((cb: any) => {
+				cb.checked = false
+			})
+			updateBulkActionsState()
+		})
+
+		elements.bulkDeleteBtn?.addEventListener('click', () => {
+			const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+			if (
+				confirm(
+					translations[currentLang]?.confirmBulkDelete ||
+						'Delete selected sites?'
+				)
+			) {
+				const hostsToDelete: string[] = []
+				checkedBoxes.forEach((cb: any) => {
+					hostsToDelete.push(cb.getAttribute('data-host'))
+				})
+
+				for (const date in dailyStats) {
+					for (const host of hostsToDelete) {
+						delete dailyStats[date][host]
+					}
+				}
+
+				for (const host of hostsToDelete) {
+					delete siteCategories[host]
+				}
+
+				saveSiteCategories()
+				chrome.storage.local.set({ dailyStats }, () => {
+					updateDashboard()
+					renderActivityChart()
+					updateBulkActionsState()
+				})
+			}
+		})
+
+		elements.bulkCategoryBtn?.addEventListener('click', () => {
+			const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+			if (checkedBoxes.length > 0) {
+				openCategoriesModal()
+			}
+		})
+
+		elements.createCategoryBtn?.addEventListener('click', () => {
+			const name = elements.newCategoryName.value.trim().toLowerCase()
+			const color = elements.newCategoryColor.value
+
+			if (!name) return
+
+			if (categoryColors[name]) {
+				showError('Category already exists')
+				return
+			}
+
+			categoryColors[name] = color
+			saveCategoryColors()
+
+			elements.newCategoryName.value = ''
+			renderCategoryButtons()
+			renderCategoriesList()
+		})
 
 		elements.periodSelect.addEventListener('change', () => updateDashboard())
 		elements.pauseButton.addEventListener('click', () => {
@@ -751,7 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const sitesRecords = getRecordsForPeriod(sitesStartDate)
 
 		renderSummary(currentPeriodRecords, prevPeriodRecords)
-		renderSitesList(sitesRecords)
+		renderSitesList(sitesRecords, currentSearchQuery)
 		renderDistributionChart()
 	}
 
@@ -844,8 +987,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	function renderSitesList(records: { [host: string]: number }) {
-		const sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
+	function renderSitesList(
+		records: { [host: string]: number },
+		filter: string = ''
+	) {
+		let sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
+
+		if (filter) {
+			sortedSites = sortedSites.filter(([host]) =>
+				host.toLowerCase().includes(filter.toLowerCase())
+			)
+		}
 
 		elements.sitesListContainer.style.opacity = '0'
 		elements.sitesListContainer.style.transform = 'translateY(10px)'
@@ -861,13 +1013,16 @@ document.addEventListener('DOMContentLoaded', () => {
 								let categoryBadge = ''
 
 								if (category) {
-									const color = defaultCategoryColors[category] || '#8b5cf6'
+									const color = categoryColors[category] || '#8b5cf6'
 									const emoji = getCategoryEmoji(category)
 									categoryBadge = `<span class="category-badge" style="background-color: ${color}20; color: ${color}; border: 1px solid ${color}40;" title="${category}">${emoji}</span>`
 								}
 
 								return `
             <div class="site-entry" data-host="${host}">
+              <div class="site-select-wrapper">
+                  <input type="checkbox" class="site-checkbox" data-host="${host}">
+              </div>
               <span class="site-rank">${index + 1}</span>
               <div class="site-info">
                   <div class="site-name-wrapper">
@@ -887,6 +1042,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							})
 							.join('')
 					: `<p class="placeholder">${translations[currentLang].statusNoData}</p>`
+
+			// Re-attach event listeners
+			document.querySelectorAll('.site-checkbox').forEach(cb => {
+				cb.addEventListener('change', updateBulkActionsState)
+			})
 
 			document.querySelectorAll('.site-category-btn').forEach(btn => {
 				const btnElement = btn as HTMLElement
