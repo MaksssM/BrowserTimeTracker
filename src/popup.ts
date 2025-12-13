@@ -33,12 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	let currentState: CurrentState = { isPaused: false }
 	let liveTimerInterval: number | null = null
 	let currentLang = 'en'
+	let currentSearchQuery = ''
 	let currentChartType = 'daily'
 	let currentSitesPeriod = 'daily'
 	let currentDistributionPeriod = 'daily'
 	let activityChartInstance: Chart | null = null
 	let distributionChartInstance: Chart | null = null
-	let reminderThreshold: number = 30 * 60 * 1000 // 30 minutes
 	let siteCategories: SiteCategory = {}
 	let currentTimezone = 'auto'
 	const defaultCategoryColors: CategoryColor = {
@@ -49,9 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		shopping: '#10b981',
 		other: '#8b5cf6',
 	}
+	let categoryColors: CategoryColor = { ...defaultCategoryColors }
 
 	const LANGUAGES = [
-		{ id: 'uk', name: 'Українська' },
+		{ id: 'ua', name: 'Українська' },
 		{ id: 'en', name: 'English' },
 		{ id: 'es', name: 'Español' },
 		{ id: 'de', name: 'Deutsch' },
@@ -63,6 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		{ id: 'nord', key: 'themeNord' },
 		{ id: 'matcha', key: 'themeMatcha' },
 		{ id: 'solar', key: 'themeSolar' },
+		{ id: 'cyberpunk', key: 'themeCyberpunk' },
+		{ id: 'dracula', key: 'themeDracula' },
+		{ id: 'latte', key: 'themeLatte' },
+		{ id: 'coffee', key: 'themeCoffee' },
+		{ id: 'ocean', key: 'themeOcean' },
+		{ id: 'forest', key: 'themeForest' },
+		{ id: 'sunset', key: 'themeSunset' },
+		{ id: 'nebula', key: 'themeNebula' },
 	]
 
 	const elements = {
@@ -96,10 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			'error-container'
 		) as HTMLDivElement,
 		sitesCount: document.getElementById('sites-count') as HTMLSpanElement,
+		productivityScoreValue: document.getElementById(
+			'productivity-score-value'
+		) as HTMLSpanElement,
+		productivityBar: document.getElementById(
+			'productivity-bar'
+		) as HTMLDivElement,
 		chartDaily: document.getElementById('chart-daily') as HTMLButtonElement,
 		chartWeekly: document.getElementById('chart-weekly') as HTMLButtonElement,
 		chartMonthly: document.getElementById('chart-monthly') as HTMLButtonElement,
-		// Новые элементы для кнопок сайтов
+		chartYearly: document.getElementById('chart-yearly') as HTMLButtonElement,
 		sitesDaily: document.getElementById('sites-daily') as HTMLButtonElement,
 		sitesWeekly: document.getElementById('sites-weekly') as HTMLButtonElement,
 		sitesMonthly: document.getElementById('sites-monthly') as HTMLButtonElement,
@@ -113,17 +128,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		distDaily: document.getElementById('dist-daily') as HTMLButtonElement,
 		distWeekly: document.getElementById('dist-weekly') as HTMLButtonElement,
 		distMonthly: document.getElementById('dist-monthly') as HTMLButtonElement,
+		distYearly: document.getElementById('dist-yearly') as HTMLButtonElement,
 		settingsModal: document.getElementById('settings-modal') as HTMLDivElement,
 		modalClose: document.querySelector('.modal-close') as HTMLButtonElement,
 		saveSettingsBtn: document.getElementById(
 			'save-settings-btn'
 		) as HTMLButtonElement,
-		resetThemeBtn: document.getElementById(
-			'reset-theme-btn'
-		) as HTMLButtonElement,
-		reminderTimeInput: document.getElementById(
-			'reminder-time'
-		) as HTMLInputElement,
 		timezoneSelect: document.getElementById(
 			'timezone-select'
 		) as HTMLSelectElement,
@@ -146,6 +156,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		categoriesList: document.getElementById(
 			'categories-list'
 		) as HTMLDivElement,
+		siteSearch: document.getElementById('sites-search') as HTMLInputElement,
+		bulkActionsPanel: document.getElementById(
+			'bulk-actions-panel'
+		) as HTMLDivElement,
+		selectedCount: document.getElementById('selected-count') as HTMLSpanElement,
+		bulkCategoryBtn: document.getElementById(
+			'bulk-category-btn'
+		) as HTMLButtonElement,
+		bulkDeleteBtn: document.getElementById(
+			'bulk-delete-btn'
+		) as HTMLButtonElement,
+		bulkCancelBtn: document.getElementById(
+			'bulk-cancel-btn'
+		) as HTMLButtonElement,
+		newCategoryName: document.getElementById(
+			'new-category-name'
+		) as HTMLInputElement,
+		newCategoryColor: document.getElementById(
+			'new-category-color'
+		) as HTMLInputElement,
+		createCategoryBtn: document.getElementById(
+			'create-category-btn'
+		) as HTMLButtonElement,
 	}
 
 	const formatHMS = (s: number): string => {
@@ -185,11 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	const openSettingsModal = () => {
-		elements.reminderTimeInput.value = (
-			reminderThreshold /
-			60 /
-			1000
-		).toString()
 		elements.settingsModal.classList.add('show')
 	}
 
@@ -198,42 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	const saveSettings = () => {
-		const newThreshold = parseInt(elements.reminderTimeInput.value, 10)
-		if (newThreshold > 0) {
-			reminderThreshold = newThreshold * 60 * 1000
-			chrome.runtime.sendMessage({
-				type: 'SET_REMINDER_THRESHOLD',
-				threshold: reminderThreshold,
-			})
-		}
-
-		// Зберегти часовий пояс
 		currentTimezone = elements.timezoneSelect.value
 		chrome.storage.sync.set({ timezone: currentTimezone })
 
 		closeSettingsModal()
 	}
 
-	const resetSettings = () => {
-		reminderThreshold = 30 * 60 * 1000
-		elements.reminderTimeInput.value = '30'
-		chrome.runtime.sendMessage({
-			type: 'SET_REMINDER_THRESHOLD',
-			threshold: reminderThreshold,
-		})
-	}
-
-	// Функція для отримання дати з урахуванням часового поясу
-	const getDateByTimezone = (date: Date = new Date()): string => {
-		let d = new Date(date)
-		if (currentTimezone !== 'auto') {
-			const offset = parseInt(currentTimezone.replace('UTC', ''))
-			d = new Date(d.getTime() + offset * 60 * 60 * 1000)
-		}
-		return d.toISOString().slice(0, 10)
-	}
-
-	// Функції для управління категоріями
 	const saveSiteCategories = () => {
 		chrome.storage.local.set({ siteCategories })
 	}
@@ -242,6 +240,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		const data = await chrome.storage.local.get('siteCategories')
 		if (data.siteCategories) {
 			siteCategories = data.siteCategories
+		}
+	}
+
+	const saveCategoryColors = () => {
+		chrome.storage.local.set({ categoryColors })
+	}
+
+	const loadCategoryColors = async () => {
+		const data = await chrome.storage.local.get('categoryColors')
+		if (data.categoryColors) {
+			categoryColors = { ...defaultCategoryColors, ...data.categoryColors }
 		}
 	}
 
@@ -264,16 +273,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (!container) return
 
 		container.innerHTML = ''
-		const categories = Object.keys(defaultCategoryColors)
+		const categories = Object.keys(categoryColors)
 
 		categories.forEach(category => {
 			const btn = document.createElement('button')
-			const color = defaultCategoryColors[category]
+			const color = categoryColors[category]
 			const emoji = getCategoryEmoji(category)
+			const categoryName =
+				translations[currentLang][
+					'category' + category.charAt(0).toUpperCase() + category.slice(1)
+				] || category
 
-			btn.innerHTML = `${emoji} ${
-				category.charAt(0).toUpperCase() + category.slice(1)
-			}`
+			btn.innerHTML = `${emoji} ${categoryName}`
 			btn.style.padding = '8px 10px'
 			btn.style.borderRadius = '6px'
 			btn.style.border = `1.5px solid ${color}`
@@ -312,16 +323,36 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 
 			btn.onclick = () => {
-				const site = elements.newSiteInput.value.trim()
-				if (!site) {
-					showError('Please enter a site name first')
-					return
+				const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+				if (checkedBoxes.length > 0) {
+					checkedBoxes.forEach((cb: any) => {
+						const host = cb.getAttribute('data-host')
+						siteCategories[host] = category
+					})
+					saveSiteCategories()
+
+					checkedBoxes.forEach((cb: any) => {
+						cb.checked = false
+					})
+					updateBulkActionsState()
+					closeCategoriesModal()
+					updateDashboard()
+				} else {
+					const site = elements.newSiteInput.value.trim().toLowerCase()
+					if (!site) {
+						showError(
+							translations[currentLang]?.enterSiteName ||
+								'Please enter a site name first'
+						)
+						return
+					}
+					siteCategories[site] = category
+					saveSiteCategories()
+					elements.newSiteInput.value = ''
+					renderCategoriesList()
+					renderCategoryButtons()
+					updateDashboard()
 				}
-				siteCategories[site] = category
-				saveSiteCategories()
-				elements.newSiteInput.value = ''
-				renderCategoriesList()
-				renderCategoryButtons()
 			}
 
 			container.appendChild(btn)
@@ -344,19 +375,25 @@ document.addEventListener('DOMContentLoaded', () => {
 			emptyMsg.style.padding = '24px'
 			emptyMsg.style.color = 'rgba(255,255,255,0.5)'
 			emptyMsg.style.fontSize = '13px'
-			emptyMsg.textContent = 'No categories yet. Add a site to get started!'
+			emptyMsg.textContent =
+				translations[currentLang]?.noCategories ||
+				'No categories yet. Add a site to get started!'
 			elements.categoriesList.appendChild(emptyMsg)
 			return
 		}
 
 		// Вивести кожну категорію
-		const orderedCategories = Object.keys(defaultCategoryColors)
+		const orderedCategories = Object.keys(categoryColors)
 		for (const category of orderedCategories) {
 			const sites = categories[category]
 			if (!sites) continue
 
-			const color = defaultCategoryColors[category]
+			const color = categoryColors[category]
 			const emoji = getCategoryEmoji(category)
+			const categoryName =
+				translations[currentLang][
+					'category' + category.charAt(0).toUpperCase() + category.slice(1)
+				] || category
 
 			const categoryDiv = document.createElement('div')
 			categoryDiv.style.padding = '10px'
@@ -375,7 +412,9 @@ document.addEventListener('DOMContentLoaded', () => {
 			title.style.marginBottom = '8px'
 			title.style.color = color
 			title.style.fontSize = '12px'
-			title.innerHTML = `${emoji} ${category.toUpperCase()} (${sites.length})`
+			title.innerHTML = `${emoji} ${categoryName.toUpperCase()} (${
+				sites.length
+			})`
 
 			const sitesList = document.createElement('div')
 			sitesList.style.display = 'flex'
@@ -384,38 +423,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			sites.forEach(host => {
 				const siteRow = document.createElement('div')
+				siteRow.className = 'category-site-row'
 				siteRow.style.display = 'flex'
 				siteRow.style.justifyContent = 'space-between'
 				siteRow.style.alignItems = 'center'
-				siteRow.style.padding = '4px 6px'
-				siteRow.style.borderRadius = '4px'
+				siteRow.style.padding = '6px 10px'
+				siteRow.style.borderRadius = '6px'
 				siteRow.style.background = 'rgba(255,255,255,0.03)'
-				siteRow.style.fontSize = '12px'
+				siteRow.style.fontSize = '13px'
+				siteRow.style.cursor = 'pointer'
+				siteRow.title = 'Click to edit'
 
 				const span = document.createElement('span')
 				span.textContent = host
 				span.style.wordBreak = 'break-all'
 
+				// Click to edit/reassign
+				siteRow.onclick = e => {
+					// Don't trigger if delete button was clicked
+					if ((e.target as HTMLElement).tagName === 'BUTTON') return
+					elements.newSiteInput.value = host
+					elements.newSiteInput.focus()
+					// Visual feedback
+					siteRow.style.background = 'rgba(255,255,255,0.1)'
+					setTimeout(() => {
+						siteRow.style.background = 'rgba(255,255,255,0.03)'
+					}, 200)
+				}
+
 				const btn = document.createElement('button')
-				btn.textContent = '✕'
+				btn.innerHTML =
+					'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
 				btn.style.background = 'none'
 				btn.style.border = 'none'
-				btn.style.color = 'rgba(255,255,255,0.5)'
+				btn.style.color = 'rgba(255,255,255,0.4)'
 				btn.style.cursor = 'pointer'
-				btn.style.padding = '0 4px'
-				btn.style.fontSize = '14px'
+				btn.style.padding = '4px'
+				btn.style.display = 'flex'
+				btn.style.alignItems = 'center'
+				btn.style.justifyContent = 'center'
+				btn.style.borderRadius = '4px'
 				btn.style.transition = 'all 0.2s'
 				btn.style.marginLeft = '8px'
 				btn.style.flexShrink = '0'
 
 				btn.onmouseenter = () => {
 					btn.style.color = '#ff4444'
+					btn.style.background = 'rgba(255, 68, 68, 0.1)'
 				}
 				btn.onmouseleave = () => {
-					btn.style.color = 'rgba(255,255,255,0.5)'
+					btn.style.color = 'rgba(255,255,255,0.4)'
+					btn.style.background = 'none'
 				}
 
-				btn.onclick = () => {
+				btn.onclick = e => {
+					e.stopPropagation()
 					delete siteCategories[host]
 					saveSiteCategories()
 					renderCategoriesList()
@@ -435,8 +497,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const openCategoriesModal = () => {
 		elements.categoriesModal.classList.add('show')
+
+		// Auto-fill with current host if available and valid
+		if (
+			currentState.currentHost &&
+			currentState.currentHost !== 'newtab' &&
+			currentState.currentHost !== 'extensions'
+		) {
+			elements.newSiteInput.value = formatHostname(currentState.currentHost)
+		}
+
 		renderCategoriesList()
 		renderCategoryButtons()
+		setTimeout(() => elements.newSiteInput.focus(), 100)
 	}
 
 	const closeCategoriesModal = () => {
@@ -451,8 +524,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				timezone: 'auto',
 			})) as SyncData
 
+			// Set language immediately to avoid translation errors
+			currentLang = syncData.language || 'en'
 			currentTimezone = syncData.timezone || 'auto'
 			await loadSiteCategories()
+			await loadCategoryColors()
 
 			chrome.runtime.sendMessage({ type: 'GET_CURRENT_STATE' }, response => {
 				if (chrome.runtime.lastError) {
@@ -475,6 +551,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	const updateBulkActionsState = () => {
+		const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+		const count = checkedBoxes.length
+
+		if (count > 0) {
+			elements.bulkActionsPanel.classList.add('visible')
+			elements.selectedCount.textContent = `${count} selected`
+		} else {
+			elements.bulkActionsPanel.classList.remove('visible')
+		}
+	}
+
 	const setupUI = (syncData: SyncData) => {
 		setLanguage(syncData.language)
 		buildLangMenu()
@@ -482,6 +570,76 @@ document.addEventListener('DOMContentLoaded', () => {
 		applyTheme(syncData.theme)
 		updateUsageDays()
 		setupFeedbackButton()
+
+		elements.siteSearch?.addEventListener('input', e => {
+			currentSearchQuery = (e.target as HTMLInputElement).value
+			updateDashboard()
+		})
+
+		elements.bulkCancelBtn?.addEventListener('click', () => {
+			document.querySelectorAll('.site-checkbox:checked').forEach((cb: any) => {
+				cb.checked = false
+			})
+			updateBulkActionsState()
+		})
+
+		elements.bulkDeleteBtn?.addEventListener('click', () => {
+			const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+			if (
+				confirm(
+					translations[currentLang]?.confirmBulkDelete ||
+						'Delete selected sites?'
+				)
+			) {
+				const hostsToDelete: string[] = []
+				checkedBoxes.forEach((cb: any) => {
+					hostsToDelete.push(cb.getAttribute('data-host'))
+				})
+
+				for (const date in dailyStats) {
+					for (const host of hostsToDelete) {
+						delete dailyStats[date][host]
+					}
+				}
+
+				for (const host of hostsToDelete) {
+					delete siteCategories[host]
+				}
+
+				saveSiteCategories()
+				chrome.storage.local.set({ dailyStats }, () => {
+					updateDashboard()
+					renderActivityChart()
+					updateBulkActionsState()
+				})
+			}
+		})
+
+		elements.bulkCategoryBtn?.addEventListener('click', () => {
+			const checkedBoxes = document.querySelectorAll('.site-checkbox:checked')
+			if (checkedBoxes.length > 0) {
+				openCategoriesModal()
+			}
+		})
+
+		elements.createCategoryBtn?.addEventListener('click', () => {
+			const name = elements.newCategoryName.value.trim().toLowerCase()
+			const color = elements.newCategoryColor.value
+
+			if (!name) return
+
+			if (categoryColors[name]) {
+				showError('Category already exists')
+				return
+			}
+
+			categoryColors[name] = color
+			saveCategoryColors()
+
+			elements.newCategoryName.value = ''
+			renderCategoryButtons()
+			renderCategoriesList()
+		})
 
 		elements.periodSelect.addEventListener('change', () => updateDashboard())
 		elements.pauseButton.addEventListener('click', () => {
@@ -510,6 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.chartMonthly.addEventListener('click', () =>
 			setChartType('monthly')
 		)
+		elements.chartYearly.addEventListener('click', () => setChartType('yearly'))
 
 		elements.sitesDaily.addEventListener('click', () => setSitesPeriod('daily'))
 		elements.sitesWeekly.addEventListener('click', () =>
@@ -531,10 +690,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.distMonthly.addEventListener('click', () =>
 			setDistributionPeriod('monthly')
 		)
+		elements.distYearly.addEventListener('click', () =>
+			setDistributionPeriod('yearly')
+		)
 
 		elements.modalClose.addEventListener('click', closeSettingsModal)
 		elements.saveSettingsBtn.addEventListener('click', saveSettings)
-		elements.resetThemeBtn.addEventListener('click', resetSettings)
 
 		document.addEventListener('click', e => {
 			const target = e.target as HTMLElement
@@ -733,7 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const sitesRecords = getRecordsForPeriod(sitesStartDate)
 
 		renderSummary(currentPeriodRecords, prevPeriodRecords)
-		renderSitesList(sitesRecords)
+		renderSitesList(sitesRecords, currentSearchQuery)
 		renderDistributionChart()
 	}
 
@@ -770,20 +931,73 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (prevTime === 0) {
 			elements.comparisonInsight.textContent =
 				translations[currentLang].noComparison
-			return
+		} else {
+			const percentageChange = ((totalTime - prevTime) / prevTime) * 100
+			const trend = percentageChange >= 0 ? '↑' : '↓'
+			const trendClass = percentageChange >= 0 ? 'trend-up' : 'trend-down'
+
+			elements.comparisonInsight.innerHTML = `<span class="${trendClass}">${trend}${Math.abs(
+				percentageChange
+			).toFixed(0)}%</span> ${translations[currentLang].comparedToPrevious}`
 		}
 
-		const percentageChange = ((totalTime - prevTime) / prevTime) * 100
-		const trend = percentageChange >= 0 ? '↑' : '↓'
-		const trendClass = percentageChange >= 0 ? 'trend-up' : 'trend-down'
+		// Calculate Productivity Score
+		let productiveTime = 0
+		let totalCategorizedTime = 0
 
-		elements.comparisonInsight.innerHTML = `<span class="${trendClass}">${trend}${Math.abs(
-			percentageChange
-		).toFixed(0)}%</span> ${translations[currentLang].comparedToPrevious}`
+		// Define productive categories
+		const productiveCategories = ['work', 'learning']
+		const neutralCategories = ['other', 'shopping']
+		// const distractingCategories = ['entertainment', 'social'] // Not used yet
+
+		for (const [host, time] of Object.entries(records)) {
+			const category =
+				siteCategories[host] || siteCategories[host.toLowerCase()]
+			if (category) {
+				totalCategorizedTime += time
+				if (productiveCategories.includes(category)) {
+					productiveTime += time
+				} else if (neutralCategories.includes(category)) {
+					// Neutral counts as half productive? Or just ignored?
+					// Let's ignore neutral for score calculation denominator if we want strict,
+					// or include it. Let's include it in total but 0 in numerator.
+				}
+			}
+		}
+
+		let score = 0
+		if (totalCategorizedTime > 0) {
+			score = Math.round((productiveTime / totalCategorizedTime) * 100)
+		}
+
+		if (elements.productivityScoreValue && elements.productivityBar) {
+			elements.productivityScoreValue.textContent = `${score}%`
+			elements.productivityBar.style.width = `${score}%`
+
+			// Color coding
+			if (score >= 70) {
+				elements.productivityBar.style.background =
+					'var(--accent-green, #22c55e)'
+			} else if (score >= 40) {
+				elements.productivityBar.style.background =
+					'var(--accent-yellow, #eab308)'
+			} else {
+				elements.productivityBar.style.background = 'var(--accent-red, #f43f5e)'
+			}
+		}
 	}
 
-	function renderSitesList(records: { [host: string]: number }) {
-		const sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
+	function renderSitesList(
+		records: { [host: string]: number },
+		filter: string = ''
+	) {
+		let sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
+
+		if (filter) {
+			sortedSites = sortedSites.filter(([host]) =>
+				host.toLowerCase().includes(filter.toLowerCase())
+			)
+		}
 
 		elements.sitesListContainer.style.opacity = '0'
 		elements.sitesListContainer.style.transform = 'translateY(10px)'
@@ -794,17 +1008,66 @@ document.addEventListener('DOMContentLoaded', () => {
 					? sortedSites
 							.map(([host, time], index) => {
 								let displayHost = formatHostname(host)
+								const category =
+									siteCategories[host] || siteCategories[host.toLowerCase()]
+								let categoryBadge = ''
+
+								if (category) {
+									const color = categoryColors[category] || '#8b5cf6'
+									const emoji = getCategoryEmoji(category)
+									categoryBadge = `<span class="category-badge" style="background-color: ${color}20; color: ${color}; border: 1px solid ${color}40;" title="${category}">${emoji}</span>`
+								}
+
 								return `
             <div class="site-entry" data-host="${host}">
+              <div class="site-select-wrapper">
+                  <input type="checkbox" class="site-checkbox" data-host="${host}">
+              </div>
               <span class="site-rank">${index + 1}</span>
-              <span class="site-name" title="${host}">${displayHost}</span>
+              <div class="site-info">
+                  <div class="site-name-wrapper">
+                    ${categoryBadge}
+                    <span class="site-name" title="${host}">${displayHost}</span>
+                  </div>
+              </div>
               <span class="site-time" data-base-time="${time}">${formatHMS(
 									time
 								)}</span>
+              <button class="site-category-btn" data-host="${host}" title="${
+									translations[currentLang]?.addToCategory || 'Add to category'
+								}">
+                📁
+              </button>
             </div>`
 							})
 							.join('')
 					: `<p class="placeholder">${translations[currentLang].statusNoData}</p>`
+
+			// Re-attach event listeners
+			document.querySelectorAll('.site-checkbox').forEach(cb => {
+				cb.addEventListener('change', updateBulkActionsState)
+			})
+
+			document.querySelectorAll('.site-category-btn').forEach(btn => {
+				const btnElement = btn as HTMLElement
+				btnElement.addEventListener('mouseenter', () => {
+					btnElement.style.background = 'rgba(255,255,255,0.1)'
+					btnElement.style.color = 'rgba(255,255,255,0.8)'
+				})
+				btnElement.addEventListener('mouseleave', () => {
+					btnElement.style.background = 'none'
+					btnElement.style.color = 'rgba(255,255,255,0.4)'
+				})
+				btnElement.addEventListener('click', (e: Event) => {
+					e.stopPropagation()
+					const host = btnElement.getAttribute('data-host')
+					if (host) {
+						elements.newSiteInput.value = host.toLowerCase()
+						openCategoriesModal()
+						setTimeout(() => elements.newSiteInput.focus(), 100)
+					}
+				})
+			})
 
 			setTimeout(() => {
 				elements.sitesListContainer.style.opacity = '1'
@@ -869,6 +1132,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	const setLanguage = (lang: string) => {
+		// Validate language exists, otherwise use 'en'
+		if (!translations[lang]) {
+			lang = 'en'
+		}
 		currentLang = lang
 		document.documentElement.lang = lang
 		elements.langButton.textContent = lang.toUpperCase()
@@ -887,10 +1154,20 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		})
 
+		document.querySelectorAll('[data-i18n-key-placeholder]').forEach(el => {
+			const key = el.getAttribute('data-i18n-key-placeholder')
+			if (key && translations[lang]?.[key]) {
+				;(el as HTMLInputElement).placeholder = translations[lang][key]
+			}
+		})
+
 		if (Object.keys(dailyStats).length > 0) {
 			updateDashboard()
 			renderActivityChart()
 		}
+		updateUsageDays()
+		renderCategoryButtons()
+		renderCategoriesList()
 	}
 
 	const buildLangMenu = () => {
@@ -999,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 				data.push(weekTotal)
 			}
-		} else {
+		} else if (currentChartType === 'monthly') {
 			for (let i = 5; i >= 0; i--) {
 				const month = new Date(now.getFullYear(), now.getMonth() - i, 1)
 				const monthName =
@@ -1023,24 +1300,38 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 				data.push(monthTotal)
 			}
+		} else {
+			// yearly
+			for (let i = 11; i >= 0; i--) {
+				const year = new Date(
+					now.getFullYear() - Math.floor(i / 12),
+					(now.getMonth() - (i % 12) + 12) % 12,
+					1
+				)
+				labels.push(getMonthName(year.getMonth()))
+				let monthTotal = 0
+				const monthStart = new Date(year.getFullYear(), year.getMonth(), 1)
+				const monthEnd = new Date(year.getFullYear(), year.getMonth() + 1, 0)
+				const currentDate = new Date(monthStart)
+				while (currentDate <= monthEnd) {
+					const dayStr = currentDate.toISOString().slice(0, 10)
+					if (dailyStats[dayStr]) {
+						monthTotal += Object.values(dailyStats[dayStr]).reduce(
+							(a, b) => a + b,
+							0
+						)
+					}
+					currentDate.setDate(currentDate.getDate() + 1)
+				}
+				data.push(monthTotal)
+			}
 		}
 
 		const dataInHours = data.map(seconds =>
 			parseFloat((seconds / 3600).toFixed(1))
 		)
 
-		const getThemeColors = () => {
-			const theme = document.body.dataset.theme || 'monolith'
-			const themeColors: {
-				[key: string]: { accent: string; accentLight: string }
-			} = {
-				monolith: { accent: '#4f46e5', accentLight: '#6366f1' },
-				nord: { accent: '#88c0d0', accentLight: '#8fbcbb' },
-				solar: { accent: '#268bd2', accentLight: '#2aa198' },
-				matcha: { accent: '#6aa378', accentLight: '#81b29a' },
-			}
-			return themeColors[theme] || themeColors.monolith
-		}
+		// Use global getThemeColors
 
 		const themeColors = getThemeColors()
 		const accentColor = themeColors.accent
@@ -1180,7 +1471,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		const now = new Date()
 		let startDate: Date
 
-		// Визначити дату початку на основі періоду
 		switch (currentDistributionPeriod) {
 			case 'weekly':
 				const dayOfWeekDist = now.getDay()
@@ -1193,11 +1483,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			case 'monthly':
 				startDate = new Date(now.getFullYear(), now.getMonth(), 1)
 				break
+			case 'yearly':
+				startDate = new Date(now.getFullYear(), 0, 1)
+				break
 			default: // 'daily'
 				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 		}
 
-		// Get top 5 sites за вибраний період
 		const allSites: { [host: string]: number } = {}
 		for (const dayKey in dailyStats) {
 			const dayDate = new Date(dayKey)
@@ -1219,15 +1511,14 @@ document.addEventListener('DOMContentLoaded', () => {
 			parseFloat((time / 3600).toFixed(1))
 		)
 
-		const themeColors = getThemeColors()
-		const accentColor = themeColors.accent
+		const colors = ['#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e']
 
-		const colors = [
-			accentColor,
-			themeColors.accentLight,
-			'rgba(79, 70, 229, 0.6)',
-			'rgba(79, 70, 229, 0.4)',
-			'rgba(79, 70, 229, 0.2)',
+		const borderColors = [
+			'rgba(99, 102, 241, 0.8)',
+			'rgba(139, 92, 246, 0.8)',
+			'rgba(217, 70, 239, 0.8)',
+			'rgba(236, 72, 153, 0.8)',
+			'rgba(244, 63, 94, 0.8)',
 		]
 
 		const glassText =
@@ -1243,11 +1534,10 @@ document.addEventListener('DOMContentLoaded', () => {
 					{
 						data: data,
 						backgroundColor: colors,
-						borderColor:
-							getComputedStyle(document.body)
-								.getPropertyValue('--glass-bg')
-								.trim() || 'rgba(20, 20, 20, 0.6)',
-						borderWidth: 2,
+						borderColor: borderColors,
+						borderWidth: 3,
+						hoverBorderWidth: 4,
+						hoverOffset: 8,
 					},
 				],
 			},
@@ -1259,8 +1549,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						position: 'bottom',
 						labels: {
 							color: glassText,
-							font: { size: 12 },
+							font: { size: 12, weight: 'bold' },
 							padding: 15,
+							usePointStyle: true,
+							pointStyle: 'circle',
 						},
 					},
 					tooltip: {
@@ -1273,6 +1565,11 @@ document.addEventListener('DOMContentLoaded', () => {
 								.getPropertyValue('--text-primary')
 								.trim() || '#f5f5f5',
 						bodyColor: glassText,
+						padding: 12,
+						borderColor: 'rgba(99, 102, 241, 0.3)',
+						borderWidth: 1,
+						titleFont: { weight: 'bold', size: 13 },
+						bodyFont: { size: 12 },
 						callbacks: {
 							label: function (context) {
 								const hours = Math.floor((context.parsed as number) / 1)
@@ -1289,16 +1586,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	const getThemeColors = () => {
-		const theme = document.body.dataset.theme || 'monolith'
-		const themeColors: {
-			[key: string]: { accent: string; accentLight: string }
-		} = {
-			monolith: { accent: '#4f46e5', accentLight: '#6366f1' },
-			nord: { accent: '#88c0d0', accentLight: '#8fbcbb' },
-			solar: { accent: '#268bd2', accentLight: '#2aa198' },
-			matcha: { accent: '#6aa378', accentLight: '#81b29a' },
+		const style = getComputedStyle(document.body)
+		return {
+			accent: style.getPropertyValue('--accent').trim() || '#6366f1',
+			accentLight: style.getPropertyValue('--accent-light').trim() || '#818cf8',
 		}
-		return themeColors[theme] || themeColors.monolith
 	}
 
 	let resizeTimer: number
@@ -1311,12 +1603,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		}, 250)
 	})
 
-	// Підрахунок днів користування та оновлення в меню налаштувань
 	function updateUsageDays() {
 		const usageDays = Object.keys(dailyStats).length
 		const el = document.getElementById('usage-days')
-		if (el) {
-			el.textContent = `Днів користування: ${usageDays}`
+		if (el && translations[currentLang]?.usageDays) {
+			el.textContent = translations[currentLang].usageDays.replace(
+				'{days}',
+				usageDays.toString()
+			)
 		}
 	}
 
@@ -1325,9 +1619,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const btn = document.getElementById('feedback-btn')
 		if (btn) {
 			btn.addEventListener('click', () => {
-				alert(
-					'Дякуємо за бажання залишити відгук! Незабаром тут зʼявиться форма.'
-				)
+				alert(translations[currentLang]?.feedbackAlert || 'Thank you!')
 			})
 		}
 	}

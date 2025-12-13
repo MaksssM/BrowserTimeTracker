@@ -249,6 +249,50 @@
 				updateActivity()
 			})
 		}
+
+		// Create context menu items
+		chrome.contextMenus.create({
+			id: 'zenith-add-category',
+			title: 'Add to Category',
+			contexts: ['page'],
+		})
+
+		const categories = [
+			'work',
+			'learning',
+			'entertainment',
+			'social',
+			'shopping',
+			'other',
+		]
+		categories.forEach(cat => {
+			chrome.contextMenus.create({
+				id: `zenith-cat-${cat}`,
+				parentId: 'zenith-add-category',
+				title: cat.charAt(0).toUpperCase() + cat.slice(1),
+				contexts: ['page'],
+			})
+		})
+	})
+
+	chrome.contextMenus.onClicked.addListener((info, tab) => {
+		if (
+			info.menuItemId.toString().startsWith('zenith-cat-') &&
+			tab &&
+			tab.url
+		) {
+			const category = info.menuItemId.toString().replace('zenith-cat-', '')
+			const host = getHost(tab.url)
+			if (host) {
+				chrome.storage.local.get('siteCategories', data => {
+					const siteCategories = data.siteCategories || {}
+					siteCategories[host.toLowerCase()] = category
+					chrome.storage.local.set({ siteCategories }, () => {
+						console.log(`Added ${host.toLowerCase()} to ${category}`)
+					})
+				})
+			}
+		}
 	})
 
 	chrome.tabs.onActivated.addListener(updateActivity)
