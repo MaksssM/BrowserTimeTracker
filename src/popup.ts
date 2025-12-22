@@ -791,6 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (needsFullRedraw) {
 					updateDashboard()
 					renderActivityChart()
+					renderDistributionChart()
 					renderFlowDiagram()
 					renderHeatmap()
 					renderTrendsAnalysis()
@@ -845,7 +846,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		switch (period) {
 			case 'today':
 				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-				prevStartDate = new Date(new Date().setDate(now.getDate() - 1))
+				startDate.setHours(0, 0, 0, 0)
+				prevStartDate = new Date(
+					now.getFullYear(),
+					now.getMonth(),
+					now.getDate() - 1
+				)
+				prevStartDate.setHours(0, 0, 0, 0)
 				titleKey = 'periodToday'
 				break
 			case 'week':
@@ -855,19 +862,23 @@ document.addEventListener('DOMContentLoaded', () => {
 					now.getMonth(),
 					now.getDate() - dayOfWeekSummary + (dayOfWeekSummary === 0 ? -6 : 1)
 				)
-				prevStartDate = new Date(
-					new Date(startDate).setDate(startDate.getDate() - 7)
-				)
+				startDate.setHours(0, 0, 0, 0)
+				prevStartDate = new Date(startDate)
+				prevStartDate.setDate(prevStartDate.getDate() - 7)
 				titleKey = 'periodWeek'
 				break
 			case 'month':
 				startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-				prevStartDate = new Date(new Date().setMonth(now.getMonth() - 1))
+				startDate.setHours(0, 0, 0, 0)
+				prevStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+				prevStartDate.setHours(0, 0, 0, 0)
 				titleKey = 'periodMonth'
 				break
 			default:
 				startDate = new Date(now.getFullYear(), 0, 1)
-				prevStartDate = new Date(new Date().setFullYear(now.getFullYear() - 1))
+				startDate.setHours(0, 0, 0, 0)
+				prevStartDate = new Date(now.getFullYear() - 1, 0, 1)
+				prevStartDate.setHours(0, 0, 0, 0)
 				titleKey = 'periodYear'
 		}
 
@@ -879,12 +890,15 @@ document.addEventListener('DOMContentLoaded', () => {
 					now.getMonth(),
 					now.getDate() - dayOfWeekSites + (dayOfWeekSites === 0 ? -6 : 1)
 				)
+				sitesStartDate.setHours(0, 0, 0, 0)
 				break
 			case 'monthly':
 				sitesStartDate = new Date(now.getFullYear(), now.getMonth(), 1)
+				sitesStartDate.setHours(0, 0, 0, 0)
 				break
 			case 'yearly':
 				sitesStartDate = new Date(now.getFullYear(), 0, 1)
+				sitesStartDate.setHours(0, 0, 0, 0)
 				break
 			default:
 				sitesStartDate = new Date(
@@ -918,12 +932,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		const records: { [host: string]: number } = {}
 		const adjustedStartDate = new Date(startDate)
 		adjustedStartDate.setHours(0, 0, 0, 0)
+		const adjustedEndDate = new Date(endDate)
+		adjustedEndDate.setHours(23, 59, 59, 999)
 
 		for (const dayKey in dailyStats) {
 			const dayDate = new Date(dayKey)
 			dayDate.setHours(0, 0, 0, 0)
 
-			if (dayDate >= adjustedStartDate && dayDate < endDate) {
+			if (dayDate >= adjustedStartDate && dayDate <= adjustedEndDate) {
 				for (const host in dailyStats[dayKey]) {
 					records[host] = (records[host] || 0) + dailyStats[dayKey][host]
 				}
@@ -1483,6 +1499,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const now = new Date()
 		let startDate: Date
+		let endDate: Date = new Date(now)
+		endDate.setHours(23, 59, 59, 999)
 
 		switch (currentDistributionPeriod) {
 			case 'weekly':
@@ -1492,15 +1510,19 @@ document.addEventListener('DOMContentLoaded', () => {
 					now.getMonth(),
 					now.getDate() - dayOfWeekDist + (dayOfWeekDist === 0 ? -6 : 1)
 				)
+				startDate.setHours(0, 0, 0, 0)
 				break
 			case 'monthly':
 				startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+				startDate.setHours(0, 0, 0, 0)
 				break
 			case 'yearly':
 				startDate = new Date(now.getFullYear(), 0, 1)
+				startDate.setHours(0, 0, 0, 0)
 				break
 			default: // 'daily'
 				startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+				startDate.setHours(0, 0, 0, 0)
 		}
 
 		const allSites: { [host: string]: number } = {}
@@ -1508,7 +1530,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const dayDate = new Date(dayKey)
 			dayDate.setHours(0, 0, 0, 0)
 
-			if (dayDate >= startDate) {
+			if (dayDate >= startDate && dayDate <= endDate) {
 				for (const host in dailyStats[dayKey]) {
 					allSites[host] = (allSites[host] || 0) + dailyStats[dayKey][host]
 				}
@@ -1523,6 +1545,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		const data = topSites.map(([_, time]) =>
 			parseFloat((time / 3600).toFixed(1))
 		)
+		// Keep original seconds for tooltip display
+		const originalSeconds = topSites.map(([_, time]) => time)
 
 		const colors = ['#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e']
 
@@ -1585,10 +1609,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						bodyFont: { size: 12 },
 						callbacks: {
 							label: function (context) {
-								const hours = Math.floor((context.parsed as number) / 1)
-								const minutes = Math.round(
-									((context.parsed as number) % 1) * 60
-								)
+								const index = context.dataIndex
+								const seconds = originalSeconds[index]
+								const hours = Math.floor(seconds / 3600)
+								const minutes = Math.floor((seconds % 3600) / 60)
 								return `${hours}h ${minutes}m`
 							},
 						},
