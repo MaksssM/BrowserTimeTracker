@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	let currentDistributionPeriod = 'daily'
 	let activityChartInstance: Chart | null = null
 	let distributionChartInstance: Chart | null = null
+	let heatmapChartInstance: Chart | null = null
+	let trendsChartInstance: Chart | null = null
 	let siteCategories: SiteCategory = {}
 	let currentTimezone = 'auto'
 	const defaultCategoryColors: CategoryColor = {
@@ -545,6 +547,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				updateDashboard()
 				startLiveUpdates()
 				renderActivityChart()
+
+				// Render new visualizations
+				renderFlowDiagram()
+				renderHeatmap()
+				renderTrendsAnalysis()
 			})
 		} catch (error) {
 			showError(translations[currentLang].errorInitialization)
@@ -784,6 +791,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (needsFullRedraw) {
 					updateDashboard()
 					renderActivityChart()
+					renderFlowDiagram()
+					renderHeatmap()
+					renderTrendsAnalysis()
 				}
 				startLiveUpdates()
 			}
@@ -896,6 +906,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		renderSummary(currentPeriodRecords, prevPeriodRecords)
 		renderSitesList(sitesRecords, currentSearchQuery)
 		renderDistributionChart()
+		renderFlowDiagram()
+		renderHeatmap()
+		renderTrendsAnalysis()
 	}
 
 	const getRecordsForPeriod = (
@@ -1622,6 +1635,382 @@ document.addEventListener('DOMContentLoaded', () => {
 				alert(translations[currentLang]?.feedbackAlert || 'Thank you!')
 			})
 		}
+	}
+
+	// Flow Diagram - Site Transitions
+	async function renderFlowDiagram() {
+		const response = await chrome.runtime.sendMessage({
+			type: 'GET_SITE_TRANSITIONS',
+		})
+
+		if (!response || !response.success || !response.transitions) {
+			const flowViz = document.getElementById('flow-viz')
+			if (flowViz) {
+				flowViz.innerHTML =
+					'<p style="text-align: center; color: var(--text-muted);">No transition data available yet</p>'
+			}
+			return
+		}
+
+		const transitions = response.transitions
+		const flowMap: { [key: string]: { [key: string]: number } } = {}
+
+		// Aggregate transitions
+		transitions.forEach((t: { from: string; to: string }) => {
+			if (!flowMap[t.from]) flowMap[t.from] = {}
+			flowMap[t.from][t.to] = (flowMap[t.from][t.to] || 0) + 1
+		})
+
+		// Find top transitions
+		const topTransitions: Array<{ from: string; to: string; count: number }> =
+			[]
+		for (const from in flowMap) {
+			for (const to in flowMap[from]) {
+				topTransitions.push({ from, to, count: flowMap[from][to] })
+			}
+		}
+		topTransitions.sort((a, b) => b.count - a.count)
+		const top10 = topTransitions.slice(0, 10)
+
+		// Render as simple list with visual indicators
+		const flowViz = document.getElementById('flow-viz')
+		if (flowViz && top10.length > 0) {
+			flowViz.innerHTML = top10
+				.map(t => {
+					const width = Math.max(30, (t.count / top10[0].count) * 100)
+					return `
+						<div style="margin-bottom: 16px; padding: 12px; background: var(--surface-hover); border-radius: 8px;">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+								<span style="font-size: 13px; color: var(--text-main); font-weight: 600;">
+									${formatHostname(t.from)} → ${formatHostname(t.to)}
+								</span>
+								<span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">
+									${t.count} times
+								</span>
+							</div>
+							<div style="height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden;">
+								<div style="height: 100%; width: ${width}%; background: linear-gradient(90deg, var(--accent), var(--accent-light)); transition: width 0.3s ease;"></div>
+							</div>
+						</div>
+					`
+				})
+				.join('')
+		} else if (flowViz) {
+			flowViz.innerHTML =
+				'<p style="text-align: center; color: var(--text-muted);">Not enough data to show transitions</p>'
+		}
+	}
+
+	// Heatmap - Activity by Hour and Day
+	async function renderHeatmap() {
+		const response = await chrome.runtime.sendMessage({
+			type: 'GET_HOURLY_STATS',
+		})
+
+		if (!response || !response.success || !response.hourlyStats) {
+			return
+		}
+
+		const hourlyStats = response.hourlyStats
+		const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+		// Create 2D matrix: [day][hour]
+		const heatmapData: number[][] = Array.from({ length: 7 }, () =>
+			Array(24).fill(0)
+		)
+
+		// Aggregate data by day of week and hour
+		for (const dateKey in hourlyStats) {
+			const date = new Date(dateKey)
+			const dayOfWeek = date.getDay()
+			for (const hour in hourlyStats[dateKey]) {
+				const h = parseInt(hour)
+				heatmapData[dayOfWeek][h] += hourlyStats[dateKey][h]
+			}
+		}
+
+		// Find max value for normalization
+		const maxValue = Math.max(...heatmapData.flat())
+
+		// Prepare data for Chart.js Matrix chart
+		const dataPoints: Array<{ x: number; y: number; v: number }> = []
+		for (let day = 0; day < 7; day++) {
+			for (let hour = 0; hour < 24; hour++) {
+				dataPoints.push({
+					x: hour,
+					y: day,
+					v: heatmapData[day][hour],
+				})
+			}
+		}
+
+		const canvas = document.getElementById('heatmap-chart') as HTMLCanvasElement
+		if (!canvas) return
+
+		const ctx = canvas.getContext('2d')
+		if (!ctx) return
+
+		if (heatmapChartInstance) {
+			heatmapChartInstance.destroy()
+		}
+
+		const glassText =
+			getComputedStyle(document.body)
+				.getPropertyValue('--text-secondary')
+				.trim() || '#a3a3a3'
+
+		// Since Chart.js doesn't have built-in heatmap, we'll use a bubble chart
+		heatmapChartInstance = new Chart(ctx, {
+			type: 'bubble',
+			data: {
+				datasets: [
+					{
+						data: dataPoints.map(d => ({
+							x: d.x,
+							y: d.y,
+							r: maxValue > 0 ? Math.sqrt((d.v / maxValue) * 100) : 1,
+						})),
+						backgroundColor: dataPoints.map(d => {
+							const intensity = maxValue > 0 ? d.v / maxValue : 0
+							const r = Math.floor(99 + intensity * 156) // 99 to 255
+							const g = Math.floor(102 + intensity * 0) // 102 stays
+							const b = Math.floor(241 - intensity * 100) // 241 to 141
+							return `rgba(${r}, ${g}, ${b}, 0.7)`
+						}),
+						borderColor: 'rgba(99, 102, 241, 0.3)',
+						borderWidth: 1,
+					},
+				],
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: { display: false },
+					tooltip: {
+						callbacks: {
+							label: function (context: any) {
+								const dataIndex = context.dataIndex
+								const point = dataPoints[dataIndex]
+								return `${days[point.y]} ${point.x}:00 - ${formatHMS(point.v)}`
+							},
+						},
+					},
+				},
+				scales: {
+					x: {
+						type: 'linear',
+						position: 'bottom',
+						min: -0.5,
+						max: 23.5,
+						ticks: {
+							stepSize: 1,
+							color: glassText,
+							callback: function (value) {
+								return `${value}:00`
+							},
+						},
+						grid: { color: 'rgba(255, 255, 255, 0.05)' },
+					},
+					y: {
+						type: 'linear',
+						min: -0.5,
+						max: 6.5,
+						ticks: {
+							stepSize: 1,
+							color: glassText,
+							callback: function (value) {
+								return days[value as number]
+							},
+						},
+						grid: { color: 'rgba(255, 255, 255, 0.05)' },
+					},
+				},
+			},
+		})
+	}
+
+	// Trends Analysis - Weekly Comparison
+	function renderTrendsAnalysis() {
+		const now = new Date()
+		const thisWeekStart = new Date(now)
+		thisWeekStart.setDate(now.getDate() - now.getDay())
+		thisWeekStart.setHours(0, 0, 0, 0)
+
+		const lastWeekStart = new Date(thisWeekStart)
+		lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+
+		const thisWeekData: { [category: string]: number } = {}
+		const lastWeekData: { [category: string]: number } = {}
+
+		// Aggregate data by category for this week and last week
+		for (const dateKey in dailyStats) {
+			const date = new Date(dateKey)
+			const isThisWeek = date >= thisWeekStart && date < now
+			const isLastWeek = date >= lastWeekStart && date < thisWeekStart
+
+			for (const host in dailyStats[dateKey]) {
+				const category = siteCategories[host.toLowerCase()] || 'other'
+				const time = dailyStats[dateKey][host]
+
+				if (isThisWeek) {
+					thisWeekData[category] = (thisWeekData[category] || 0) + time
+				} else if (isLastWeek) {
+					lastWeekData[category] = (lastWeekData[category] || 0) + time
+				}
+			}
+		}
+
+		// Calculate changes
+		const insights: Array<{
+			category: string
+			thisWeek: number
+			lastWeek: number
+			change: number
+			changePercent: number
+		}> = []
+
+		const allCategories = new Set([
+			...Object.keys(thisWeekData),
+			...Object.keys(lastWeekData),
+		])
+
+		allCategories.forEach(cat => {
+			const thisWeek = thisWeekData[cat] || 0
+			const lastWeek = lastWeekData[cat] || 0
+			const change = thisWeek - lastWeek
+			const changePercent =
+				lastWeek > 0 ? (change / lastWeek) * 100 : thisWeek > 0 ? 100 : 0
+
+			insights.push({
+				category: cat,
+				thisWeek,
+				lastWeek,
+				change,
+				changePercent,
+			})
+		})
+
+		insights.sort(
+			(a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)
+		)
+
+		// Render insights
+		const trendsInsights = document.getElementById('trends-insights')
+		if (trendsInsights && insights.length > 0) {
+			trendsInsights.innerHTML = insights
+				.slice(0, 5)
+				.map(insight => {
+					const isIncrease = insight.changePercent > 0
+					const isDecrease = insight.changePercent < 0
+					const arrow = isIncrease ? '▲' : isDecrease ? '▼' : '●'
+					const color = isIncrease
+						? 'var(--warning)'
+						: isDecrease
+						? 'var(--success)'
+						: 'var(--text-muted)'
+
+					const changeText = isIncrease
+						? translations[currentLang]?.trendsIncreased || 'increased by'
+						: isDecrease
+						? translations[currentLang]?.trendsDecreased || 'decreased by'
+						: translations[currentLang]?.trendsNoChange || 'no change'
+
+					return `
+						<div style="padding: 12px; margin-bottom: 8px; background: var(--surface-hover); border-radius: 8px; border-left: 3px solid ${color};">
+							<div style="display: flex; justify-content: space-between; align-items: center;">
+								<span style="font-weight: 600; text-transform: capitalize; color: var(--text-main);">
+									${insight.category}
+								</span>
+								<span style="font-weight: 700; color: ${color};">
+									${arrow} ${Math.abs(insight.changePercent).toFixed(0)}%
+								</span>
+							</div>
+							<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+								${changeText} ${Math.abs(insight.changePercent).toFixed(0)}% (${formatHMS(
+						insight.thisWeek
+					)} this week vs ${formatHMS(insight.lastWeek)} last week)
+							</div>
+						</div>
+					`
+				})
+				.join('')
+		} else if (trendsInsights) {
+			trendsInsights.innerHTML =
+				'<p style="text-align: center; color: var(--text-muted);">Not enough data for trends analysis</p>'
+		}
+
+		// Render chart
+		const canvas = document.getElementById('trends-chart') as HTMLCanvasElement
+		if (!canvas) return
+
+		const ctx = canvas.getContext('2d')
+		if (!ctx) return
+
+		if (trendsChartInstance) {
+			trendsChartInstance.destroy()
+		}
+
+		const categories = insights.slice(0, 5).map(i => i.category)
+		const thisWeekValues = insights.slice(0, 5).map(i => i.thisWeek / 3600)
+		const lastWeekValues = insights.slice(0, 5).map(i => i.lastWeek / 3600)
+
+		const glassText =
+			getComputedStyle(document.body)
+				.getPropertyValue('--text-secondary')
+				.trim() || '#a3a3a3'
+
+		trendsChartInstance = new Chart(ctx, {
+			type: 'bar',
+			data: {
+				labels: categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
+				datasets: [
+					{
+						label: translations[currentLang]?.trendsThisWeek || 'This Week',
+						data: thisWeekValues,
+						backgroundColor: 'rgba(99, 102, 241, 0.7)',
+						borderColor: 'rgba(99, 102, 241, 1)',
+						borderWidth: 2,
+					},
+					{
+						label: translations[currentLang]?.trendsLastWeek || 'Last Week',
+						data: lastWeekValues,
+						backgroundColor: 'rgba(139, 92, 246, 0.5)',
+						borderColor: 'rgba(139, 92, 246, 0.8)',
+						borderWidth: 2,
+					},
+				],
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						labels: { color: glassText, font: { size: 12, weight: 'bold' } },
+					},
+					tooltip: {
+						callbacks: {
+							label: function (context) {
+								return `${context.dataset.label}: ${context.parsed.y.toFixed(
+									1
+								)}h`
+							},
+						},
+					},
+				},
+				scales: {
+					x: {
+						ticks: { color: glassText },
+						grid: { color: 'rgba(255, 255, 255, 0.05)' },
+					},
+					y: {
+						ticks: { color: glassText },
+						grid: { color: 'rgba(255, 255, 255, 0.1)' },
+						beginAtZero: true,
+					},
+				},
+			},
+		})
 	}
 
 	init()

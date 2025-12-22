@@ -10,6 +10,18 @@
 		currentSessionStart: number | null
 	}
 
+	interface SiteTransition {
+		from: string
+		to: string
+		timestamp: number
+	}
+
+	interface HourlyStats {
+		[date: string]: {
+			[hour: number]: number // 0-23 hours
+		}
+	}
+
 	let dailyStats: DailyStats = {}
 	let currentState: CurrentState = {
 		currentHost: null,
@@ -20,6 +32,8 @@
 	let lastProcessedDate: string | null = null
 	let lastRemindedHost: string | null = null
 	let reminderThreshold: number = 30 * 60 * 1000 // 30 minutes default
+	let siteTransitions: SiteTransition[] = []
+	let hourlyStats: HourlyStats = {}
 
 	const getHost = (url: string): string | null => {
 		try {
@@ -47,21 +61,28 @@
 				'isPaused',
 				'lastProcessedDate',
 				'reminderThreshold',
+				'siteTransitions',
+				'hourlyStats',
 			])
 			dailyStats = data.dailyStats || {}
 			isPaused = data.isPaused || false
 			lastProcessedDate = data.lastProcessedDate || null
 			reminderThreshold = data.reminderThreshold || 30 * 60 * 1000
+			siteTransitions = data.siteTransitions || []
+			hourlyStats = data.hourlyStats || {}
 			console.log('Initial data loaded.', {
 				dailyStats,
 				isPaused,
 				lastProcessedDate,
+				transitionsCount: siteTransitions.length,
 			})
 		} catch (error) {
 			console.error('Error loading initial data:', error)
 			dailyStats = {}
 			isPaused = false
 			lastProcessedDate = null
+			siteTransitions = []
+			hourlyStats = {}
 		}
 	}
 
@@ -87,14 +108,24 @@
 		if (sessionDuration < 1) return
 
 		const today = getDateKey()
+		const currentHour = new Date().getHours()
+
+		// Save to daily stats
 		dailyStats[today] = dailyStats[today] || {}
 		dailyStats[today][currentState.currentHost] =
 			(dailyStats[today][currentState.currentHost] || 0) + sessionDuration
 
+		// Save to hourly stats
+		hourlyStats[today] = hourlyStats[today] || {}
+		hourlyStats[today][currentHour] =
+			(hourlyStats[today][currentHour] || 0) + sessionDuration
+
 		currentState.currentSessionStart = Math.floor(Date.now() / 1000)
 
-		chrome.storage.local.set({ dailyStats })
-		console.log(`Saved ${sessionDuration}s for ${currentState.currentHost}`)
+		chrome.storage.local.set({ dailyStats, hourlyStats })
+		console.log(
+			`Saved ${sessionDuration}s for ${currentState.currentHost} at hour ${currentHour}`
+		)
 	}
 
 	const updateActivity = async () => {
@@ -132,6 +163,20 @@
 
 			if (currentState.currentHost) {
 				saveCurrentSession()
+
+				// Track site transition
+				siteTransitions.push({
+					from: currentState.currentHost,
+					to: host,
+					timestamp: Date.now(),
+				})
+
+				// Keep only last 1000 transitions to avoid storage bloat
+				if (siteTransitions.length > 1000) {
+					siteTransitions = siteTransitions.slice(-1000)
+				}
+
+				chrome.storage.local.set({ siteTransitions })
 			}
 
 			const now = Date.now() / 1000
@@ -354,6 +399,16 @@
 			reminderThreshold = request.threshold || 30 * 60 * 1000
 			chrome.storage.local.set({ reminderThreshold })
 			sendResponse({ success: true })
+		} else if (request.type === 'GET_SITE_TRANSITIONS') {
+			sendResponse({
+				success: true,
+				transitions: siteTransitions,
+			})
+		} else if (request.type === 'GET_HOURLY_STATS') {
+			sendResponse({
+				success: true,
+				hourlyStats: hourlyStats,
+			})
 		}
 		return true
 	})
