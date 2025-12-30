@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	let currentDistributionPeriod = 'daily'
 	let activityChartInstance: Chart | null = null
 	let distributionChartInstance: Chart | null = null
-	let heatmapChartInstance: Chart | null = null
 	let trendsChartInstance: Chart | null = null
 	let siteCategories: SiteCategory = {}
 	let currentTimezone = 'auto'
@@ -550,7 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				// Render new visualizations
 				renderFlowDiagram()
-				renderHeatmap()
 				renderTrendsAnalysis()
 			})
 		} catch (error) {
@@ -793,7 +791,6 @@ document.addEventListener('DOMContentLoaded', () => {
 					renderActivityChart()
 					renderDistributionChart()
 					renderFlowDiagram()
-					renderHeatmap()
 					renderTrendsAnalysis()
 				}
 				startLiveUpdates()
@@ -921,7 +918,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		renderSitesList(sitesRecords, currentSearchQuery)
 		renderDistributionChart()
 		renderFlowDiagram()
-		renderHeatmap()
 		renderTrendsAnalysis()
 	}
 
@@ -1723,135 +1719,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			flowViz.innerHTML =
 				'<p style="text-align: center; color: var(--text-muted);">Not enough data to show transitions</p>'
 		}
-	}
-
-	// Heatmap - Activity by Hour and Day
-	async function renderHeatmap() {
-		const response = await chrome.runtime.sendMessage({
-			type: 'GET_HOURLY_STATS',
-		})
-
-		if (!response || !response.success || !response.hourlyStats) {
-			return
-		}
-
-		const hourlyStats = response.hourlyStats
-		const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-		// Create 2D matrix: [day][hour]
-		const heatmapData: number[][] = Array.from({ length: 7 }, () =>
-			Array(24).fill(0)
-		)
-
-		// Aggregate data by day of week and hour
-		for (const dateKey in hourlyStats) {
-			const date = new Date(dateKey)
-			const dayOfWeek = date.getDay()
-			for (const hour in hourlyStats[dateKey]) {
-				const h = parseInt(hour)
-				heatmapData[dayOfWeek][h] += hourlyStats[dateKey][h]
-			}
-		}
-
-		// Find max value for normalization
-		const maxValue = Math.max(...heatmapData.flat())
-
-		// Prepare data for Chart.js Matrix chart
-		const dataPoints: Array<{ x: number; y: number; v: number }> = []
-		for (let day = 0; day < 7; day++) {
-			for (let hour = 0; hour < 24; hour++) {
-				dataPoints.push({
-					x: hour,
-					y: day,
-					v: heatmapData[day][hour],
-				})
-			}
-		}
-
-		const canvas = document.getElementById('heatmap-chart') as HTMLCanvasElement
-		if (!canvas) return
-
-		const ctx = canvas.getContext('2d')
-		if (!ctx) return
-
-		if (heatmapChartInstance) {
-			heatmapChartInstance.destroy()
-		}
-
-		const glassText =
-			getComputedStyle(document.body)
-				.getPropertyValue('--text-secondary')
-				.trim() || '#a3a3a3'
-
-		// Since Chart.js doesn't have built-in heatmap, we'll use a bubble chart
-		heatmapChartInstance = new Chart(ctx, {
-			type: 'bubble',
-			data: {
-				datasets: [
-					{
-						data: dataPoints.map(d => ({
-							x: d.x,
-							y: d.y,
-							r: maxValue > 0 ? Math.sqrt((d.v / maxValue) * 100) : 1,
-						})),
-						backgroundColor: dataPoints.map(d => {
-							const intensity = maxValue > 0 ? d.v / maxValue : 0
-							const r = Math.floor(99 + intensity * 156) // 99 to 255
-							const g = Math.floor(102 + intensity * 0) // 102 stays
-							const b = Math.floor(241 - intensity * 100) // 241 to 141
-							return `rgba(${r}, ${g}, ${b}, 0.7)`
-						}),
-						borderColor: 'rgba(99, 102, 241, 0.3)',
-						borderWidth: 1,
-					},
-				],
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				plugins: {
-					legend: { display: false },
-					tooltip: {
-						callbacks: {
-							label: function (context: any) {
-								const dataIndex = context.dataIndex
-								const point = dataPoints[dataIndex]
-								return `${days[point.y]} ${point.x}:00 - ${formatHMS(point.v)}`
-							},
-						},
-					},
-				},
-				scales: {
-					x: {
-						type: 'linear',
-						position: 'bottom',
-						min: -0.5,
-						max: 23.5,
-						ticks: {
-							stepSize: 1,
-							color: glassText,
-							callback: function (value) {
-								return `${value}:00`
-							},
-						},
-						grid: { color: 'rgba(255, 255, 255, 0.05)' },
-					},
-					y: {
-						type: 'linear',
-						min: -0.5,
-						max: 6.5,
-						ticks: {
-							stepSize: 1,
-							color: glassText,
-							callback: function (value) {
-								return days[value as number]
-							},
-						},
-						grid: { color: 'rgba(255, 255, 255, 0.05)' },
-					},
-				},
-			},
-		})
 	}
 
 	// Trends Analysis - Weekly Comparison

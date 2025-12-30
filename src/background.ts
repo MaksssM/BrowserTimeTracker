@@ -16,12 +16,6 @@
 		timestamp: number
 	}
 
-	interface HourlyStats {
-		[date: string]: {
-			[hour: number]: number // 0-23 hours
-		}
-	}
-
 	let dailyStats: DailyStats = {}
 	let currentState: CurrentState = {
 		currentHost: null,
@@ -33,7 +27,6 @@
 	let lastRemindedHost: string | null = null
 	let reminderThreshold: number = 30 * 60 * 1000 // 30 minutes default
 	let siteTransitions: SiteTransition[] = []
-	let hourlyStats: HourlyStats = {}
 
 	const getHost = (url: string): string | null => {
 		try {
@@ -62,14 +55,12 @@
 				'lastProcessedDate',
 				'reminderThreshold',
 				'siteTransitions',
-				'hourlyStats',
 			])
 			dailyStats = data.dailyStats || {}
 			isPaused = data.isPaused || false
 			lastProcessedDate = data.lastProcessedDate || null
 			reminderThreshold = data.reminderThreshold || 30 * 60 * 1000
 			siteTransitions = data.siteTransitions || []
-			hourlyStats = data.hourlyStats || {}
 			console.log('Initial data loaded.', {
 				dailyStats,
 				isPaused,
@@ -82,7 +73,6 @@
 			isPaused = false
 			lastProcessedDate = null
 			siteTransitions = []
-			hourlyStats = {}
 		}
 	}
 
@@ -108,24 +98,16 @@
 		if (sessionDuration < 1) return
 
 		const today = getDateKey()
-		const currentHour = new Date().getHours()
 
 		// Save to daily stats
 		dailyStats[today] = dailyStats[today] || {}
 		dailyStats[today][currentState.currentHost] =
 			(dailyStats[today][currentState.currentHost] || 0) + sessionDuration
 
-		// Save to hourly stats
-		hourlyStats[today] = hourlyStats[today] || {}
-		hourlyStats[today][currentHour] =
-			(hourlyStats[today][currentHour] || 0) + sessionDuration
-
 		currentState.currentSessionStart = Math.floor(Date.now() / 1000)
 
-		chrome.storage.local.set({ dailyStats, hourlyStats })
-		console.log(
-			`Saved ${sessionDuration}s for ${currentState.currentHost} at hour ${currentHour}`
-		)
+		chrome.storage.local.set({ dailyStats })
+		console.log(`Saved ${sessionDuration}s for ${currentState.currentHost}`)
 	}
 
 	const updateActivity = async () => {
@@ -403,11 +385,6 @@
 			sendResponse({
 				success: true,
 				transitions: siteTransitions,
-			})
-		} else if (request.type === 'GET_HOURLY_STATS') {
-			sendResponse({
-				success: true,
-				hourlyStats: hourlyStats,
 			})
 		}
 		return true
