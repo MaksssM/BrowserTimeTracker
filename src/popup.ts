@@ -1127,22 +1127,22 @@ document.addEventListener('DOMContentLoaded', () => {
 				const secondsElapsed = Date.now() / 1000 - currentSessionStart
 				elements.liveTimer.textContent = formatHMS(secondsElapsed)
 
-				if (elements.periodSelect.value === 'today') {
-					const baseTotalTime = parseInt(
-						elements.summaryTime.dataset.baseTime || '0',
-						10
-					)
-					elements.summaryTime.textContent = formatHMS(
-						baseTotalTime + secondsElapsed
-					)
+				// Update summary time for all periods (today/week/month/year)
+				const baseTotalTime = parseInt(
+					elements.summaryTime.dataset.baseTime || '0',
+					10
+				)
+				elements.summaryTime.textContent = formatHMS(
+					baseTotalTime + secondsElapsed
+				)
 
-					const siteEntry = elements.sitesListContainer.querySelector(
-						`.site-entry[data-host="${currentHost}"] .site-time`
-					) as HTMLSpanElement
-					if (siteEntry) {
-						const baseSiteTime = parseInt(siteEntry.dataset.baseTime || '0', 10)
-						siteEntry.textContent = formatHMS(baseSiteTime + secondsElapsed)
-					}
+				// Update site entry time in list
+				const siteEntry = elements.sitesListContainer.querySelector(
+					`.site-entry[data-host="${currentHost}"] .site-time`
+				) as HTMLSpanElement
+				if (siteEntry) {
+					const baseSiteTime = parseInt(siteEntry.dataset.baseTime || '0', 10)
+					siteEntry.textContent = formatHMS(baseSiteTime + secondsElapsed)
 				}
 			}
 
@@ -1724,8 +1724,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Trends Analysis - Weekly Comparison
 	function renderTrendsAnalysis() {
 		const now = new Date()
+		const dayOfWeek = now.getDay()
 		const thisWeekStart = new Date(now)
-		thisWeekStart.setDate(now.getDate() - now.getDay())
+		// ISO week: Monday is first day (adjust Sunday from 0 to 7)
+		thisWeekStart.setDate(
+			now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+		)
 		thisWeekStart.setHours(0, 0, 0, 0)
 
 		const lastWeekStart = new Date(thisWeekStart)
