@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		pauseButton: document.getElementById('pause-button') as HTMLButtonElement,
 		exportButton: document.getElementById('export-button') as HTMLButtonElement,
 		settingsButton: document.getElementById(
-			'settings-button'
+			'settings-button',
 		) as HTMLButtonElement,
 
 		langButton: document.getElementById('lang-button') as HTMLButtonElement,
@@ -88,29 +88,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		themeButton: document.getElementById('theme-button') as HTMLButtonElement,
 		themeMenu: document.getElementById('theme-menu') as HTMLDivElement,
 		liveHostname: document.getElementById(
-			'live-hostname'
+			'live-hostname',
 		) as HTMLParagraphElement,
 		liveTimer: document.getElementById('live-timer') as HTMLHeadingElement,
 		liveFavicon: document.getElementById('live-favicon') as HTMLImageElement,
 		summaryTitle: document.getElementById(
-			'summary-title'
+			'summary-title',
 		) as HTMLHeadingElement,
 		summaryTime: document.getElementById('summary-time') as HTMLHeadingElement,
 		comparisonInsight: document.getElementById(
-			'comparison-insight'
+			'comparison-insight',
 		) as HTMLParagraphElement,
 		sitesListContainer: document.getElementById(
-			'sites-list-container'
+			'sites-list-container',
 		) as HTMLDivElement,
 		errorContainer: document.getElementById(
-			'error-container'
+			'error-container',
 		) as HTMLDivElement,
 		sitesCount: document.getElementById('sites-count') as HTMLSpanElement,
 		productivityScoreValue: document.getElementById(
-			'productivity-score-value'
+			'productivity-score-value',
 		) as HTMLSpanElement,
 		productivityBar: document.getElementById(
-			'productivity-bar'
+			'productivity-bar',
 		) as HTMLDivElement,
 		chartDaily: document.getElementById('chart-daily') as HTMLButtonElement,
 		chartWeekly: document.getElementById('chart-weekly') as HTMLButtonElement,
@@ -121,10 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		sitesMonthly: document.getElementById('sites-monthly') as HTMLButtonElement,
 		sitesYearly: document.getElementById('sites-yearly') as HTMLButtonElement,
 		activityChart: document.getElementById(
-			'activity-chart'
+			'activity-chart',
 		) as HTMLCanvasElement,
 		distributionChart: document.getElementById(
-			'distribution-chart'
+			'distribution-chart',
 		) as HTMLCanvasElement,
 		distDaily: document.getElementById('dist-daily') as HTMLButtonElement,
 		distWeekly: document.getElementById('dist-weekly') as HTMLButtonElement,
@@ -133,52 +133,52 @@ document.addEventListener('DOMContentLoaded', () => {
 		settingsModal: document.getElementById('settings-modal') as HTMLDivElement,
 		modalClose: document.querySelector('.modal-close') as HTMLButtonElement,
 		saveSettingsBtn: document.getElementById(
-			'save-settings-btn'
+			'save-settings-btn',
 		) as HTMLButtonElement,
 		timezoneSelect: document.getElementById(
-			'timezone-select'
+			'timezone-select',
 		) as HTMLSelectElement,
 		categoriesButton: document.getElementById(
-			'categories-button'
+			'categories-button',
 		) as HTMLButtonElement,
 		manageCategoriesBtn: document.getElementById(
-			'manage-categories-btn'
+			'manage-categories-btn',
 		) as HTMLButtonElement,
 		categoriesModal: document.getElementById(
-			'categories-modal'
+			'categories-modal',
 		) as HTMLDivElement,
 		categoriesModalClose: document.getElementById(
-			'categories-modal-close'
+			'categories-modal-close',
 		) as HTMLButtonElement,
 		categoriesCloseBtn: document.getElementById(
-			'categories-close-btn'
+			'categories-close-btn',
 		) as HTMLButtonElement,
 		newSiteInput: document.getElementById('new-site-input') as HTMLInputElement,
 		categoriesList: document.getElementById(
-			'categories-list'
+			'categories-list',
 		) as HTMLDivElement,
 		siteSearch: document.getElementById('sites-search') as HTMLInputElement,
 		bulkActionsPanel: document.getElementById(
-			'bulk-actions-panel'
+			'bulk-actions-panel',
 		) as HTMLDivElement,
 		selectedCount: document.getElementById('selected-count') as HTMLSpanElement,
 		bulkCategoryBtn: document.getElementById(
-			'bulk-category-btn'
+			'bulk-category-btn',
 		) as HTMLButtonElement,
 		bulkDeleteBtn: document.getElementById(
-			'bulk-delete-btn'
+			'bulk-delete-btn',
 		) as HTMLButtonElement,
 		bulkCancelBtn: document.getElementById(
-			'bulk-cancel-btn'
+			'bulk-cancel-btn',
 		) as HTMLButtonElement,
 		newCategoryName: document.getElementById(
-			'new-category-name'
+			'new-category-name',
 		) as HTMLInputElement,
 		newCategoryColor: document.getElementById(
-			'new-category-color'
+			'new-category-color',
 		) as HTMLInputElement,
 		createCategoryBtn: document.getElementById(
-			'create-category-btn'
+			'create-category-btn',
 		) as HTMLButtonElement,
 	}
 
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const renderCategoryButtons = () => {
 		const container = document.getElementById(
-			'category-buttons-container'
+			'category-buttons-container',
 		) as HTMLDivElement
 		if (!container) return
 
@@ -291,10 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			btn.style.border = `1.5px solid ${color}`
 			btn.style.background = `rgba(${parseInt(
 				color.slice(1, 3),
-				16
+				16,
 			)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
 				color.slice(5, 7),
-				16
+				16,
 			)}, 0.1)`
 			btn.style.color = color
 			btn.style.cursor = 'pointer'
@@ -307,19 +307,19 @@ document.addEventListener('DOMContentLoaded', () => {
 			btn.onmouseenter = () => {
 				btn.style.background = `rgba(${parseInt(
 					color.slice(1, 3),
-					16
+					16,
 				)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
 					color.slice(5, 7),
-					16
+					16,
 				)}, 0.2)`
 			}
 			btn.onmouseleave = () => {
 				btn.style.background = `rgba(${parseInt(
 					color.slice(1, 3),
-					16
+					16,
 				)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
 					color.slice(5, 7),
-					16
+					16,
 				)}, 0.1)`
 			}
 
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (!site) {
 						showError(
 							translations[currentLang]?.enterSiteName ||
-								'Please enter a site name first'
+								'Please enter a site name first',
 						)
 						return
 					}
@@ -402,10 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			categoryDiv.style.border = `1.5px solid ${color}`
 			categoryDiv.style.background = `rgba(${parseInt(
 				color.slice(1, 3),
-				16
+				16,
 			)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(
 				color.slice(5, 7),
-				16
+				16,
 			)}, 0.08)`
 
 			const title = document.createElement('div')
@@ -593,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (
 				confirm(
 					translations[currentLang]?.confirmBulkDelete ||
-						'Delete selected sites?'
+						'Delete selected sites?',
 				)
 			) {
 				const hostsToDelete: string[] = []
@@ -671,32 +671,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.chartDaily.addEventListener('click', () => setChartType('daily'))
 		elements.chartWeekly.addEventListener('click', () => setChartType('weekly'))
 		elements.chartMonthly.addEventListener('click', () =>
-			setChartType('monthly')
+			setChartType('monthly'),
 		)
 		elements.chartYearly.addEventListener('click', () => setChartType('yearly'))
 
 		elements.sitesDaily.addEventListener('click', () => setSitesPeriod('daily'))
 		elements.sitesWeekly.addEventListener('click', () =>
-			setSitesPeriod('weekly')
+			setSitesPeriod('weekly'),
 		)
 		elements.sitesMonthly.addEventListener('click', () =>
-			setSitesPeriod('monthly')
+			setSitesPeriod('monthly'),
 		)
 		elements.sitesYearly.addEventListener('click', () =>
-			setSitesPeriod('yearly')
+			setSitesPeriod('yearly'),
 		)
 
 		elements.distDaily.addEventListener('click', () =>
-			setDistributionPeriod('daily')
+			setDistributionPeriod('daily'),
 		)
 		elements.distWeekly.addEventListener('click', () =>
-			setDistributionPeriod('weekly')
+			setDistributionPeriod('weekly'),
 		)
 		elements.distMonthly.addEventListener('click', () =>
-			setDistributionPeriod('monthly')
+			setDistributionPeriod('monthly'),
 		)
 		elements.distYearly.addEventListener('click', () =>
-			setDistributionPeriod('yearly')
+			setDistributionPeriod('yearly'),
 		)
 
 		elements.modalClose.addEventListener('click', closeSettingsModal)
@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		elements.categoriesModalClose.addEventListener(
 			'click',
-			closeCategoriesModal
+			closeCategoriesModal,
 		)
 		elements.categoriesCloseBtn.addEventListener('click', closeCategoriesModal)
 
@@ -847,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				prevStartDate = new Date(
 					now.getFullYear(),
 					now.getMonth(),
-					now.getDate() - 1
+					now.getDate() - 1,
 				)
 				prevStartDate.setHours(0, 0, 0, 0)
 				titleKey = 'periodToday'
@@ -857,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				startDate = new Date(
 					now.getFullYear(),
 					now.getMonth(),
-					now.getDate() - dayOfWeekSummary + (dayOfWeekSummary === 0 ? -6 : 1)
+					now.getDate() - dayOfWeekSummary + (dayOfWeekSummary === 0 ? -6 : 1),
 				)
 				startDate.setHours(0, 0, 0, 0)
 				prevStartDate = new Date(startDate)
@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				sitesStartDate = new Date(
 					now.getFullYear(),
 					now.getMonth(),
-					now.getDate() - dayOfWeekSites + (dayOfWeekSites === 0 ? -6 : 1)
+					now.getDate() - dayOfWeekSites + (dayOfWeekSites === 0 ? -6 : 1),
 				)
 				sitesStartDate.setHours(0, 0, 0, 0)
 				break
@@ -901,7 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				sitesStartDate = new Date(
 					now.getFullYear(),
 					now.getMonth(),
-					now.getDate()
+					now.getDate(),
 				)
 				break
 		}
@@ -923,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const getRecordsForPeriod = (
 		startDate: Date,
-		endDate: Date = new Date()
+		endDate: Date = new Date(),
 	): { [host: string]: number } => {
 		const records: { [host: string]: number } = {}
 		const adjustedStartDate = new Date(startDate)
@@ -946,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function renderSummary(
 		records: { [host: string]: number },
-		prevRecords: { [host: string]: number }
+		prevRecords: { [host: string]: number },
 	) {
 		const totalTime = Object.values(records).reduce((a, b) => a + b, 0)
 		elements.summaryTime.dataset.baseTime = totalTime.toString()
@@ -962,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const trendClass = percentageChange >= 0 ? 'trend-up' : 'trend-down'
 
 			elements.comparisonInsight.innerHTML = `<span class="${trendClass}">${trend}${Math.abs(
-				percentageChange
+				percentageChange,
 			).toFixed(0)}%</span> ${translations[currentLang].comparedToPrevious}`
 		}
 
@@ -1014,13 +1014,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function renderSitesList(
 		records: { [host: string]: number },
-		filter: string = ''
+		filter: string = '',
 	) {
 		let sortedSites = Object.entries(records).sort((a, b) => b[1] - a[1])
 
 		if (filter) {
 			sortedSites = sortedSites.filter(([host]) =>
-				host.toLowerCase().includes(filter.toLowerCase())
+				host.toLowerCase().includes(filter.toLowerCase()),
 			)
 		}
 
@@ -1036,6 +1036,8 @@ document.addEventListener('DOMContentLoaded', () => {
 								const category =
 									siteCategories[host] || siteCategories[host.toLowerCase()]
 								let categoryBadge = ''
+								const maxTime = sortedSites[0][1]
+								const percentage = maxTime > 0 ? (time / maxTime) * 100 : 0
 
 								if (category) {
 									const color = categoryColors[category] || '#8b5cf6'
@@ -1056,13 +1058,14 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>
               </div>
               <span class="site-time" data-base-time="${time}">${formatHMS(
-									time
-								)}</span>
+								time,
+							)}</span>
               <button class="site-category-btn" data-host="${host}" title="${
-									translations[currentLang]?.addToCategory || 'Add to category'
-								}">
+								translations[currentLang]?.addToCategory || 'Add to category'
+							}">
                 📁
               </button>
+              <div class="site-progress-bar"><div class="site-progress-fill" style="width: ${percentage}%"></div></div>
             </div>`
 							})
 							.join('')
@@ -1130,15 +1133,15 @@ document.addEventListener('DOMContentLoaded', () => {
 				// Update summary time for all periods (today/week/month/year)
 				const baseTotalTime = parseInt(
 					elements.summaryTime.dataset.baseTime || '0',
-					10
+					10,
 				)
 				elements.summaryTime.textContent = formatHMS(
-					baseTotalTime + secondsElapsed
+					baseTotalTime + secondsElapsed,
 				)
 
 				// Update site entry time in list
 				const siteEntry = elements.sitesListContainer.querySelector(
-					`.site-entry[data-host="${currentHost}"] .site-time`
+					`.site-entry[data-host="${currentHost}"] .site-time`,
 				) as HTMLSpanElement
 				if (siteEntry) {
 					const baseSiteTime = parseInt(siteEntry.dataset.baseTime || '0', 10)
@@ -1247,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		if (Object.keys(dailyStats).length === 0) {
 			ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(
-				'--text-secondary'
+				'--text-secondary',
 			)
 			ctx.textAlign = 'center'
 			ctx.textBaseline = 'middle'
@@ -1255,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			ctx.fillText(
 				translations[currentLang].statusNoData,
 				ctx.canvas.width / 2,
-				ctx.canvas.height / 2
+				ctx.canvas.height / 2,
 			)
 			return
 		}
@@ -1274,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				data.push(
 					dailyStats[dateStr]
 						? Object.values(dailyStats[dateStr]).reduce((a, b) => a + b, 0)
-						: 0
+						: 0,
 				)
 			}
 		} else if (currentChartType === 'weekly') {
@@ -1284,7 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const weekEnd = new Date(weekStart)
 				weekEnd.setDate(weekStart.getDate() + 6)
 				const weekLabel = `${weekStart.getDate()}-${weekEnd.getDate()} ${getMonthName(
-					weekEnd.getMonth()
+					weekEnd.getMonth(),
 				)}`
 				labels.push(weekLabel)
 				let weekTotal = 0
@@ -1295,7 +1298,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (dailyStats[dayStr]) {
 						weekTotal += Object.values(dailyStats[dayStr]).reduce(
 							(a, b) => a + b,
-							0
+							0,
 						)
 					}
 				}
@@ -1318,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (dailyStats[dayStr]) {
 						monthTotal += Object.values(dailyStats[dayStr]).reduce(
 							(a, b) => a + b,
-							0
+							0,
 						)
 					}
 					currentDate.setDate(currentDate.getDate() + 1)
@@ -1331,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const year = new Date(
 					now.getFullYear() - Math.floor(i / 12),
 					(now.getMonth() - (i % 12) + 12) % 12,
-					1
+					1,
 				)
 				labels.push(getMonthName(year.getMonth()))
 				let monthTotal = 0
@@ -1343,7 +1346,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (dailyStats[dayStr]) {
 						monthTotal += Object.values(dailyStats[dayStr]).reduce(
 							(a, b) => a + b,
-							0
+							0,
 						)
 					}
 					currentDate.setDate(currentDate.getDate() + 1)
@@ -1353,7 +1356,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		const dataInHours = data.map(seconds =>
-			parseFloat((seconds / 3600).toFixed(1))
+			parseFloat((seconds / 3600).toFixed(1)),
 		)
 
 		// Use global getThemeColors
@@ -1504,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				startDate = new Date(
 					now.getFullYear(),
 					now.getMonth(),
-					now.getDate() - dayOfWeekDist + (dayOfWeekDist === 0 ? -6 : 1)
+					now.getDate() - dayOfWeekDist + (dayOfWeekDist === 0 ? -6 : 1),
 				)
 				startDate.setHours(0, 0, 0, 0)
 				break
@@ -1539,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const labels = topSites.map(([host]) => formatHostname(host))
 		const data = topSites.map(([_, time]) =>
-			parseFloat((time / 3600).toFixed(1))
+			parseFloat((time / 3600).toFixed(1)),
 		)
 		// Keep original seconds for tooltip display
 		const originalSeconds = topSites.map(([_, time]) => time)
@@ -1642,7 +1645,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (el && translations[currentLang]?.usageDays) {
 			el.textContent = translations[currentLang].usageDays.replace(
 				'{days}',
-				usageDays.toString()
+				usageDays.toString(),
 			)
 		}
 	}
@@ -1728,7 +1731,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const thisWeekStart = new Date(now)
 		// ISO week: Monday is first day (adjust Sunday from 0 to 7)
 		thisWeekStart.setDate(
-			now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+			now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1),
 		)
 		thisWeekStart.setHours(0, 0, 0, 0)
 
@@ -1787,7 +1790,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 
 		insights.sort(
-			(a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)
+			(a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent),
 		)
 
 		// Render insights
@@ -1802,14 +1805,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					const color = isIncrease
 						? 'var(--warning)'
 						: isDecrease
-						? 'var(--success)'
-						: 'var(--text-muted)'
+							? 'var(--success)'
+							: 'var(--text-muted)'
 
 					const changeText = isIncrease
 						? translations[currentLang]?.trendsIncreased || 'increased by'
 						: isDecrease
-						? translations[currentLang]?.trendsDecreased || 'decreased by'
-						: translations[currentLang]?.trendsNoChange || 'no change'
+							? translations[currentLang]?.trendsDecreased || 'decreased by'
+							: translations[currentLang]?.trendsNoChange || 'no change'
 
 					return `
 						<div style="padding: 12px; margin-bottom: 8px; background: var(--surface-hover); border-radius: 8px; border-left: 3px solid ${color};">
@@ -1823,8 +1826,8 @@ document.addEventListener('DOMContentLoaded', () => {
 							</div>
 							<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
 								${changeText} ${Math.abs(insight.changePercent).toFixed(0)}% (${formatHMS(
-						insight.thisWeek
-					)} this week vs ${formatHMS(insight.lastWeek)} last week)
+									insight.thisWeek,
+								)} this week vs ${formatHMS(insight.lastWeek)} last week)
 							</div>
 						</div>
 					`
@@ -1887,7 +1890,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						callbacks: {
 							label: function (context) {
 								return `${context.dataset.label}: ${context.parsed.y.toFixed(
-									1
+									1,
 								)}h`
 							},
 						},
