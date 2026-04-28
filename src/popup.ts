@@ -568,6 +568,34 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	const deleteSite = (host: string) => {
+		const rawMsg =
+			translations[currentLang]?.confirmDeleteSite ||
+			`Delete "{host}" and all its statistics?`
+		const confirmMsg = rawMsg.replace('{host}', host)
+		if (!confirm(confirmMsg)) return
+
+		// Remove from all daily stats
+		for (const date in dailyStats) {
+			if (dailyStats[date][host] !== undefined) {
+				delete dailyStats[date][host]
+			}
+		}
+
+		// Remove from site categories
+		if (siteCategories[host]) {
+			delete siteCategories[host]
+			saveSiteCategories()
+		}
+
+		// Persist and update UI
+		chrome.storage.local.set({ dailyStats }, () => {
+			updateDashboard()
+			renderActivityChart()
+			renderDistributionChart()
+		})
+	}
+
 	const setupUI = (syncData: SyncData) => {
 		setLanguage(syncData.language)
 		buildLangMenu()
@@ -1063,6 +1091,11 @@ document.addEventListener('DOMContentLoaded', () => {
 								}">
                 📁
               </button>
+              <button class="site-delete-btn" data-host="${host}" title="${
+									translations[currentLang]?.deleteSite || 'Delete site'
+								}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+              </button>
             </div>`
 							})
 							.join('')
@@ -1090,6 +1123,17 @@ document.addEventListener('DOMContentLoaded', () => {
 						elements.newSiteInput.value = host.toLowerCase()
 						openCategoriesModal()
 						setTimeout(() => elements.newSiteInput.focus(), 100)
+					}
+				})
+			})
+
+			document.querySelectorAll('.site-delete-btn').forEach(btn => {
+				const btnElement = btn as HTMLElement
+				btnElement.addEventListener('click', (e: Event) => {
+					e.stopPropagation()
+					const host = btnElement.getAttribute('data-host')
+					if (host) {
+						deleteSite(host)
 					}
 				})
 			})

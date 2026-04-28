@@ -1183,6 +1183,36 @@ body.paused #pause-button .play {
 	color: rgba(255, 255, 255, 0.8);
 }
 
+/* Site delete button in list */
+.site-delete-btn {
+	background: none;
+	border: none;
+	color: rgba(255, 255, 255, 0.35);
+	cursor: pointer;
+	padding: 4px 6px;
+	border-radius: 4px;
+	transition: all 0.2s var(--ease-out);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	flex-shrink: 0;
+}
+
+.site-entry:hover .site-delete-btn {
+	opacity: 1;
+}
+
+.site-delete-btn:hover {
+	background: rgba(244, 63, 94, 0.15);
+	color: var(--accent-red, #f43f5e);
+	transform: scale(1.1);
+}
+
+.site-delete-btn:active {
+	transform: scale(0.9);
+}
+
 /* Modal */
 .modal {
 	display: none;
