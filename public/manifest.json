@@ -3,7 +3,11 @@
 	"name": "Zenith Dashboard Pro",
 	"version": "1.0",
 	"description": "A powerful dashboard extension for enhanced productivity.",
-	"permissions": ["tabs", "storage", "alarms", "contextMenus"],
+	"permissions": ["tabs", "storage", "alarms", "contextMenus", "identity"],
+	"oauth2": {
+		"client_id": "667434128177-o0ifm3klbvdh4dss5sc324a7j6fo5tkn.apps.googleusercontent.com",
+		"scopes": ["https://www.googleapis.com/auth/drive.appdata"]
+	},
 	"background": {
 		"service_worker": "background.js",
 		"type": "module"

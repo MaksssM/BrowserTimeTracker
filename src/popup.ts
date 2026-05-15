@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		settingsButton: document.getElementById(
 			'settings-button',
 		) as HTMLButtonElement,
+		syncButton: document.getElementById('sync-button') as HTMLButtonElement,
 
 		langButton: document.getElementById('lang-button') as HTMLButtonElement,
 		langMenu: document.getElementById('lang-menu') as HTMLDivElement,
@@ -753,6 +754,38 @@ document.addEventListener('DOMContentLoaded', () => {
 			toggleMenu(elements.themeMenu)
 			hideMenu(elements.langMenu)
 		})
+
+		if (elements.syncButton) {
+			elements.syncButton.addEventListener('click', async () => {
+				const originalHtml = elements.syncButton.innerHTML
+				elements.syncButton.innerHTML =
+					'<span class="pulse" style="font-size:14px">⏳</span>'
+				elements.syncButton.disabled = true
+
+				try {
+					const response = await chrome.runtime.sendMessage({
+						action: 'syncWithDrive',
+					})
+					if (response && response.success) {
+						console.log('Sync success', response.result)
+						const svg = elements.syncButton.querySelector('svg')
+						if (svg) {
+							svg.style.stroke = 'var(--accent-green)'
+							setTimeout(() => (svg.style.stroke = 'currentColor'), 3000)
+						}
+					} else {
+						console.error('Sync error:', response?.error)
+						showError('Sync error: ' + (response?.error || 'Unknown'))
+					}
+				} catch (error) {
+					console.error('Sync failed', error)
+					showError('Синхронізація не вдалася. Перевірте Google авторизацію.')
+				} finally {
+					elements.syncButton.innerHTML = originalHtml
+					elements.syncButton.disabled = false
+				}
+			})
+		}
 
 		document.addEventListener('click', e => {
 			const target = e.target as Node

@@ -1,4 +1,7 @@
+import { GDriveSyncService } from './gdrive-sync'
 ;(() => {
+	const syncService = new GDriveSyncService()
+
 	interface DailyStats {
 		[date: string]: {
 			[hostname: string]: number
@@ -93,7 +96,7 @@
 		}
 
 		const sessionDuration = Math.floor(
-			Date.now() / 1000 - currentState.currentSessionStart
+			Date.now() / 1000 - currentState.currentSessionStart,
 		)
 		if (sessionDuration < 1) return
 
@@ -198,6 +201,56 @@
 
 		chrome.storage.local.set({ dailyStats })
 		console.log('Cleaned up old data')
+	}
+
+	// Обробник повідомлень для синхронізації
+	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+		if (request.action === 'syncWithDrive') {
+			handleSync()
+				.then(result => sendResponse({ success: true, result }))
+				.catch(error => sendResponse({ success: false, error: error.message }))
+			return true // Вказує, що sendResponse буде викликано асинхронно
+		}
+	})
+
+	const handleSync = async () => {
+		console.log('Starting sync process...')
+		try {
+			// 1. Спочатку завантажуємо дані з хмари
+			const cloudData = await syncService.pullFromCloud()
+
+			if (cloudData) {
+				// Мержимо(об'єднуємо) хмарні дані з локальними
+				for (const date in cloudData) {
+					if (!dailyStats[date]) {
+						dailyStats[date] = cloudData[date]
+					} else {
+						for (const host in cloudData[date]) {
+							if (!dailyStats[date][host]) {
+								dailyStats[date][host] = cloudData[date][host]
+							} else {
+								// Беремо максимальне значення, щоб убезпечити від втрати часу
+								dailyStats[date][host] = Math.max(
+									dailyStats[date][host],
+									cloudData[date][host],
+								)
+							}
+						}
+					}
+				}
+				// Зберігаємо об'єднані дані локально
+				await chrome.storage.local.set({ dailyStats })
+			}
+
+			// 2. Відправляємо оновлені дані назад в хмару
+			await syncService.pushToCloud(dailyStats)
+
+			console.log('Sync completed successfully')
+			return 'Синхронізація успішна'
+		} catch (error: any) {
+			console.error('Sync failed:', error)
+			throw error
+		}
 	}
 
 	const checkLongActivityReminder = () => {
