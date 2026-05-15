@@ -165,26 +165,6 @@ _(Після публікації в Chrome Web Store)_
 
 ---
 
-## 👨‍💻 Автор
-
-**MaksssM**
-
-- GitHub: [@MaksssM](https://github.com/MaksssM)
-
----
-
-## 🤝 Внесок у проект
-
-Ми вітаємо внески! Якщо ви хочете покращити проект:
-
-1. Зробіть Fork репозиторію
-2. Створіть нову гілку (`git checkout -b feature/amazing-feature`)
-3. Зробіть коміт змін (`git commit -m 'Add amazing feature'`)
-4. Push до гілки (`git push origin feature/amazing-feature`)
-5. Відкрийте Pull Request
-
----
-
 ## 📮 Зворотній зв'язок
 
 Знайшли баг або маєте ідею? [Створіть Issue](https://github.com/MaksssM/BrowserTimeTracke/issues)
@@ -196,5 +176,3 @@ _(Після публікації в Chrome Web Store)_
 Поставте зірку на GitHub! Це мотивує нас розвивати проект далі.
 
 ---
-
-**Зроблено з ❤️ для продуктивності**
