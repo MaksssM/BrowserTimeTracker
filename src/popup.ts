@@ -605,6 +605,27 @@ document.addEventListener('DOMContentLoaded', () => {
 		updateUsageDays()
 		setupFeedbackButton()
 
+		// Tab switching logic
+		document.querySelectorAll('.nav-tab').forEach(tab => {
+			tab.addEventListener('click', (e) => {
+				const target = e.target as HTMLElement;
+				const tabId = target.getAttribute('data-target');
+				
+				// Remove active from all tabs
+				document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+				target.classList.add('active');
+				
+				// Hide all tab panes
+				document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+				
+				// Show selected pane
+				const pane = document.getElementById(tabId!);
+				if (pane) {
+					pane.classList.add('active');
+				}
+			});
+		});
+
 		elements.siteSearch?.addEventListener('input', e => {
 			currentSearchQuery = (e.target as HTMLInputElement).value
 			updateDashboard()
@@ -1106,6 +1127,8 @@ document.addEventListener('DOMContentLoaded', () => {
 									categoryBadge = `<span class="category-badge" style="background-color: ${color}20; color: ${color}; border: 1px solid ${color}40;" title="${category}">${emoji}</span>`
 								}
 
+								let favIconUrl = `https://www.google.com/s2/favicons?domain=${host}&sz=32`
+
 								return `
             <div class="site-entry" data-host="${host}">
               <div class="site-select-wrapper">
@@ -1114,6 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="site-rank">${index + 1}</span>
               <div class="site-info">
                   <div class="site-name-wrapper">
+                    <img class="site-favicon" src="${favIconUrl}" alt="" onerror="this.style.display='none'">
                     ${categoryBadge}
                     <span class="site-name" title="${host}">${displayHost}</span>
                   </div>
@@ -1126,15 +1150,12 @@ document.addEventListener('DOMContentLoaded', () => {
 							}">
                 📁
               </button>
-<<<<<<< HEAD
               <button class="site-delete-btn" data-host="${host}" title="${
 									translations[currentLang]?.deleteSite || 'Delete site'
 								}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
               </button>
-=======
               <div class="site-progress-bar"><div class="site-progress-fill" style="width: ${percentage}%"></div></div>
->>>>>>> 17a2f88cf140d1f1b7e1dcbd50532513303f2a2b
             </div>`
 							})
 							.join('')

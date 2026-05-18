@@ -144,6 +144,10 @@ export const translations: Translations = {
 		trendsThisWeek: 'Цього тижня',
 		trendsLastWeek: 'Минулого тижня',
 		trendsChange: 'Зміна',
+		tabTrend: 'Тренди',
+		tabDistribution: 'Розподіл',
+		tabFlow: 'Переходи',
+		tabInsights: 'Інсайти',
 	},
 	en: {
 		headerTitle: 'Statistics',
@@ -279,6 +283,10 @@ export const translations: Translations = {
 		trendsThisWeek: 'This Week',
 		trendsLastWeek: 'Last Week',
 		trendsChange: 'Change',
+		tabTrend: 'Trend',
+		tabDistribution: 'Distribution',
+		tabFlow: 'Flow',
+		tabInsights: 'Insights',
 	},
 	es: {
 		headerTitle: 'Estadísticas',
@@ -417,6 +425,10 @@ export const translations: Translations = {
 		themeForest: 'Forest',
 		themeSunset: 'Sunset',
 		themeNebula: 'Nebula',
+		tabTrend: 'Tendencia',
+		tabDistribution: 'Distribución',
+		tabFlow: 'Flujo',
+		tabInsights: 'Insights',
 	},
 	de: {
 		headerTitle: 'Statistiken',
@@ -555,6 +567,10 @@ export const translations: Translations = {
 		themeForest: 'Forest',
 		themeSunset: 'Sunset',
 		themeNebula: 'Nebula',
+		tabTrend: 'Trend',
+		tabDistribution: 'Verteilung',
+		tabFlow: 'Fluss',
+		tabInsights: 'Erkenntnisse',
 	},
 	fr: {
 		headerTitle: 'Statistiques',
@@ -693,5 +709,9 @@ export const translations: Translations = {
 		trendsThisWeek: 'Cette Semaine',
 		trendsLastWeek: 'Semaine Dernière',
 		trendsChange: 'Changement',
+		tabTrend: 'Tendance',
+		tabDistribution: 'Distribution',
+		tabFlow: 'Flux',
+		tabInsights: 'Insights',
 	},
 }
