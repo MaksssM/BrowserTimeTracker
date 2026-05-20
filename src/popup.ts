@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	let trendsChartInstance: Chart | null = null
 	let siteCategories: SiteCategory = {}
 	let currentTimezone = 'auto'
+	let currentChartStyle = 'line'
 	const defaultCategoryColors: CategoryColor = {
 		work: '#6366f1',
 		learning: '#f59e0b',
@@ -79,9 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		periodSelect: document.getElementById('period-select') as HTMLSelectElement,
 		pauseButton: document.getElementById('pause-button') as HTMLButtonElement,
 		exportButton: document.getElementById('export-button') as HTMLButtonElement,
-		settingsButton: document.getElementById(
-			'settings-button',
-		) as HTMLButtonElement,
+		settingsButton: document.getElementById('settings-button') as HTMLButtonElement,
+		ambientToggle: document.getElementById('ambient-toggle') as HTMLInputElement,
 		syncButton: document.getElementById('sync-button') as HTMLButtonElement,
 
 		langButton: document.getElementById('lang-button') as HTMLButtonElement,
@@ -136,6 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		saveSettingsBtn: document.getElementById(
 			'save-settings-btn',
 		) as HTMLButtonElement,
+		chartStyleSelect: document.getElementById(
+			'chart-style-select',
+		) as HTMLSelectElement,
 		timezoneSelect: document.getElementById(
 			'timezone-select',
 		) as HTMLSelectElement,
@@ -229,9 +232,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const saveSettings = () => {
 		currentTimezone = elements.timezoneSelect.value
-		chrome.storage.sync.set({ timezone: currentTimezone })
+		currentChartStyle = elements.chartStyleSelect.value
+		chrome.storage.sync.set({ timezone: currentTimezone, chartStyle: currentChartStyle })
+
+		const ambientEnabled = elements.ambientToggle.checked
+		chrome.storage.local.set({ ambientEnabled })
+		document.body.classList.toggle('no-ambient', !ambientEnabled)
 
 		closeSettingsModal()
+		updateDashboard()
 	}
 
 	const saveSiteCategories = () => {
@@ -518,17 +527,59 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.categoriesModal.classList.remove('show')
 	}
 
+	const init3DEffects = () => {
+		const cards = document.querySelectorAll('.card, .modal-content')
+		cards.forEach(cardContainer => {
+			const card = cardContainer as HTMLElement
+			card.classList.add('card-3d-wrap')
+
+			card.addEventListener('mousemove', e => {
+				if (document.body.classList.contains('no-ambient')) return;
+				const rect = card.getBoundingClientRect()
+				const x = e.clientX - rect.left
+				const y = e.clientY - rect.top
+
+				const centerX = rect.width / 2
+				const centerY = rect.height / 2
+
+				const rotateX = ((y - centerY) / centerY) * -4
+				const rotateY = ((x - centerX) / centerX) * 4
+
+				card.style.setProperty('--rx', `${rotateX}deg`)
+				card.style.setProperty('--ry', `${rotateY}deg`)
+				card.style.setProperty('--px', `${(x / rect.width) * 100}%`)
+				card.style.setProperty('--py', `${(y / rect.height) * 100}%`)
+			})
+
+			card.addEventListener('mouseleave', () => {
+				card.style.setProperty('--rx', '0deg')
+				card.style.setProperty('--ry', '0deg')
+				card.style.setProperty('--px', '50%')
+				card.style.setProperty('--py', '50%')
+			})
+		})
+	}
+
 	const init = async () => {
 		try {
 			const syncData = (await chrome.storage.sync.get({
 				theme: 'monolith',
 				language: 'en',
 				timezone: 'auto',
+				chartStyle: 'line',
 			})) as SyncData
 
 			// Set language immediately to avoid translation errors
 			currentLang = syncData.language || 'en'
 			currentTimezone = syncData.timezone || 'auto'
+			currentChartStyle = syncData.chartStyle || 'line'
+			if (elements.chartStyleSelect) elements.chartStyleSelect.value = currentChartStyle
+
+			const localData = await chrome.storage.local.get({ ambientEnabled: true })
+			const ambientEnabled = localData.ambientEnabled
+			elements.ambientToggle.checked = ambientEnabled
+			document.body.classList.toggle('no-ambient', !ambientEnabled)
+
 			await loadSiteCategories()
 			await loadCategoryColors()
 
@@ -590,11 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		// Persist and update UI
-		chrome.storage.local.set({ dailyStats }, () => {
-			updateDashboard()
-			renderActivityChart()
-			renderDistributionChart()
-		})
+		chrome.storage.local.set({ dailyStats })
 	}
 
 	const setupUI = (syncData: SyncData) => {
@@ -604,6 +651,100 @@ document.addEventListener('DOMContentLoaded', () => {
 		applyTheme(syncData.theme)
 		updateUsageDays()
 		setupFeedbackButton()
+		init3DEffects()
+
+		// === Unified Analytics Tab ===
+		try {
+			const mainGrid = document.querySelector('.main-grid') as HTMLElement
+			if (mainGrid && !document.getElementById('analytics')) {
+				const analyticsCard = document.createElement('div')
+				analyticsCard.id = 'analytics'
+				analyticsCard.className = 'card appear'
+				analyticsCard.innerHTML = `
+					<div class="card-header">
+						<div class="card-title-wrapper">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-icon"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+							<h3 class="card-title">Analytics</h3>
+						</div>
+						<div class="chart-views-toggle">
+							<button data-view="activity" class="active">Activity</button>
+							<button data-view="distribution">Distribution</button>
+							<button data-view="sites">Sites</button>
+							<button data-view="transitions">Transitions</button>
+							<button data-view="trends">Trends</button>
+						</div>
+					</div>
+					<div class="card-content" id="analytics-content"></div>
+				`
+
+				// Insert analytics card before the existing trend card (if present) otherwise append
+				const trendCard = document.getElementById('trend')
+				if (trendCard && trendCard.parentElement === mainGrid) {
+					mainGrid.insertBefore(analyticsCard, trendCard)
+				} else {
+					mainGrid.appendChild(analyticsCard)
+				}
+
+				// Map of original containers to move around
+				const originalContainers: { [key: string]: HTMLElement | null } = {
+					activity: document.querySelector('#trend .chart-container') as HTMLElement,
+					distribution: document.querySelector('#distribution .chart-container') as HTMLElement,
+					sites: document.getElementById('sites-list-container') as HTMLElement,
+					transitions: document.getElementById('flow-container') as HTMLElement,
+					trends: document.getElementById('trends-container') as HTMLElement,
+				}
+
+				// Keep references to original parents to restore if needed
+				const originalParents: { [key: string]: HTMLElement | null } = {}
+				Object.keys(originalContainers).forEach(k => {
+					const el = originalContainers[k]
+					originalParents[k] = el ? (el.parentElement as HTMLElement) : null
+					// hide original card wrapper
+					if (el && el.parentElement && el.parentElement.parentElement) {
+						const wrapper = el.parentElement.parentElement as HTMLElement
+						wrapper.style.display = 'none'
+					}
+				})
+
+				const analyticsContent = document.getElementById('analytics-content') as HTMLElement
+				let currentView = 'activity'
+
+				const switchView = (view: string) => {
+					if (!analyticsContent) return
+					if (currentView === view) return
+					// clear content
+					while (analyticsContent.firstChild) analyticsContent.removeChild(analyticsContent.firstChild)
+					const source = originalContainers[view]
+					if (source) {
+						analyticsContent.appendChild(source)
+						// If the source contains a canvas, trigger chart resize/render
+						if (view === 'activity') renderActivityChart()
+						if (view === 'distribution') renderDistributionChart()
+						if (view === 'transitions') renderFlowDiagram()
+						if (view === 'trends') renderTrendsAnalysis()
+						if (view === 'sites') renderSitesList(getRecordsForPeriod(new Date()))
+					}
+					// update active class
+					document.querySelectorAll('#analytics .chart-views-toggle button').forEach(b => b.classList.remove('active'))
+					document.querySelector(`#analytics .chart-views-toggle button[data-view="${view}"]`)?.classList.add('active')
+					currentView = view
+				}
+
+				// attach listeners
+				document.querySelectorAll('#analytics .chart-views-toggle button').forEach(b => {
+					b.addEventListener('click', (e) => {
+						e.preventDefault()
+						const view = (b as HTMLElement).dataset.view
+						switchView(view || 'activity')
+					})
+				})
+
+				// initial view
+				switchView('activity')
+			}
+		} catch (e) {
+			console.error('Analytics tab init failed', e)
+		}
 
 		elements.siteSearch?.addEventListener('input', e => {
 			currentSearchQuery = (e.target as HTMLInputElement).value
@@ -642,8 +783,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				saveSiteCategories()
 				chrome.storage.local.set({ dailyStats }, () => {
-					updateDashboard()
-					renderActivityChart()
 					updateBulkActionsState()
 				})
 			}
@@ -695,6 +834,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			linkElement.setAttribute('href', dataUri)
 			linkElement.setAttribute('download', exportFileDefaultName)
 			linkElement.click()
+
+			// Microinteraction: Export button
+			const originalHtml = elements.exportButton.innerHTML;
+			elements.exportButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon-check"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+			setTimeout(() => {
+				elements.exportButton.innerHTML = originalHtml;
+			}, 2000);
 		})
 
 		elements.chartDaily.addEventListener('click', () => setChartType('daily'))
@@ -784,37 +930,36 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 
 		if (elements.syncButton) {
-			elements.syncButton.addEventListener('click', async () => {
-				const originalHtml = elements.syncButton.innerHTML
-				elements.syncButton.innerHTML =
-					'<span class="pulse" style="font-size:14px">⏳</span>'
-				elements.syncButton.disabled = true
+		elements.syncButton.addEventListener('click', async () => {
+			const svg = elements.syncButton.querySelector('svg');
+			if (svg) {
+				svg.classList.add('spin-animation');
+			}
+			elements.syncButton.disabled = true
 
-				try {
-					const response = await chrome.runtime.sendMessage({
-						action: 'syncWithDrive',
-					})
-					if (response && response.success) {
-						console.log('Sync success', response.result)
-						const svg = elements.syncButton.querySelector('svg')
-						if (svg) {
-							svg.style.stroke = 'var(--accent-green)'
-							setTimeout(() => (svg.style.stroke = 'currentColor'), 3000)
-						}
-					} else {
-						console.error('Sync error:', response?.error)
-						showError('Sync error: ' + (response?.error || 'Unknown'))
-					}
-				} catch (error) {
-					console.error('Sync failed', error)
-					showError('Синхронізація не вдалася. Перевірте Google авторизацію.')
-				} finally {
-					elements.syncButton.innerHTML = originalHtml
-					elements.syncButton.disabled = false
+			try {
+				const response = await chrome.runtime.sendMessage({
+					action: 'syncWithDrive',
+				})
+				if (response && response.success) {
+					console.log('Sync success', response.result)
+					const originalHtml = elements.syncButton.innerHTML;
+					elements.syncButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon-check"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+					setTimeout(() => {
+						elements.syncButton.innerHTML = originalHtml;
+					}, 2500);
+				} else {
+					showError('Sync error: ' + (response?.error || 'Unknown'))
+					if (svg) svg.classList.remove('spin-animation');
 				}
-			})
-		}
-
+			} catch (error) {
+				showError('Sync failed')
+				if (svg) svg.classList.remove('spin-animation');
+			} finally {
+				elements.syncButton.disabled = false
+			}
+		})
+	}
 		document.addEventListener('click', e => {
 			const target = e.target as Node
 			if (
@@ -1126,15 +1271,12 @@ document.addEventListener('DOMContentLoaded', () => {
 							}">
                 📁
               </button>
-<<<<<<< HEAD
               <button class="site-delete-btn" data-host="${host}" title="${
-									translations[currentLang]?.deleteSite || 'Delete site'
-								}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+								translations[currentLang]?.deleteSite || 'Delete site'
+							}" style="background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.4); font-size: 14px; padding: 0 5px; transition: all 0.2s;">
+                🗑️
               </button>
-=======
               <div class="site-progress-bar"><div class="site-progress-fill" style="width: ${percentage}%"></div></div>
->>>>>>> 17a2f88cf140d1f1b7e1dcbd50532513303f2a2b
             </div>`
 							})
 							.join('')
@@ -1168,6 +1310,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			document.querySelectorAll('.site-delete-btn').forEach(btn => {
 				const btnElement = btn as HTMLElement
+				btnElement.addEventListener('mouseenter', () => {
+					btnElement.style.background = 'rgba(255,68,68,0.1)'
+					btnElement.style.color = '#ff4444'
+				})
+				btnElement.addEventListener('mouseleave', () => {
+					btnElement.style.background = 'none'
+					btnElement.style.color = 'rgba(255,255,255,0.4)'
+				})
 				btnElement.addEventListener('click', (e: Event) => {
 					e.stopPropagation()
 					const host = btnElement.getAttribute('data-host')
@@ -1463,8 +1613,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			getComputedStyle(document.body).getPropertyValue('--glass-bg').trim() ||
 			'rgba(20, 20, 20, 0.6)'
 
+		const isLine = currentChartStyle === 'line'
+
 		activityChartInstance = new Chart(ctx, {
-			type: 'bar',
+			type: isLine ? 'line' : 'bar',
 			data: {
 				labels: labels,
 				datasets: [
@@ -1473,9 +1625,19 @@ document.addEventListener('DOMContentLoaded', () => {
 						data: dataInHours,
 						backgroundColor: gradient,
 						borderColor: accentColor,
-						borderWidth: 2,
-						borderRadius: 6,
-						borderSkipped: false,
+						borderWidth: isLine ? 3 : 2,
+						...(isLine ? {
+							fill: true,
+							tension: 0.4,
+							pointBackgroundColor: textPrimary,
+							pointBorderColor: accentColor,
+							pointBorderWidth: 2,
+							pointRadius: 0,
+							pointHoverRadius: 6,
+						} : {
+							borderRadius: 6,
+							borderSkipped: false,
+						}),
 					},
 				],
 			},

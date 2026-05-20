@@ -144,6 +144,10 @@ export const translations: Translations = {
 		trendsThisWeek: 'Цього тижня',
 		trendsLastWeek: 'Минулого тижня',
 		trendsChange: 'Зміна',
+		settingAmbient: 'Візуальні ефекти (Анімації та 3D)',
+		settingChartStyle: 'Стиль графіка',
+		chartStyleLine: 'Хвиля (Area)',
+		chartStyleBar: 'Стовпці (Bar)',
 	},
 	en: {
 		headerTitle: 'Statistics',
@@ -279,6 +283,10 @@ export const translations: Translations = {
 		trendsThisWeek: 'This Week',
 		trendsLastWeek: 'Last Week',
 		trendsChange: 'Change',
+		settingAmbient: 'Visual Effects (Animations & 3D)',
+		settingChartStyle: 'Chart Style',
+		chartStyleLine: 'Wave (Area)',
+		chartStyleBar: 'Columns (Bar)',
 	},
 	es: {
 		headerTitle: 'Estadísticas',
@@ -417,6 +425,10 @@ export const translations: Translations = {
 		themeForest: 'Forest',
 		themeSunset: 'Sunset',
 		themeNebula: 'Nebula',
+		settingAmbient: 'Efectos Visuales (Animaciones y 3D)',
+		settingChartStyle: 'Estilo de gráfico',
+		chartStyleLine: 'Onda (Área)',
+		chartStyleBar: 'Columnas (Barra)',
 	},
 	de: {
 		headerTitle: 'Statistiken',
@@ -555,6 +567,10 @@ export const translations: Translations = {
 		themeForest: 'Forest',
 		themeSunset: 'Sunset',
 		themeNebula: 'Nebula',
+		settingAmbient: 'Visuelle Effekte (Animationen & 3D)',
+		settingChartStyle: 'Diagrammstil',
+		chartStyleLine: 'Welle (Bereich)',
+		chartStyleBar: 'Säulen (Balken)',
 	},
 	fr: {
 		headerTitle: 'Statistiques',
@@ -693,5 +709,9 @@ export const translations: Translations = {
 		trendsThisWeek: 'Cette Semaine',
 		trendsLastWeek: 'Semaine Dernière',
 		trendsChange: 'Changement',
+		settingAmbient: 'Effets Visuels (Animations et 3D)',
+		settingChartStyle: 'Style de graphique',
+		chartStyleLine: 'Vague (Zone)',
+		chartStyleBar: 'Colonnes (Barres)',
 	},
 }

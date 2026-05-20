@@ -1,14 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Zenith Dashboard Pro</title>
+		<title>Zenith Dashboard</title>
 		<link rel="stylesheet" href="style.css" />
 		<script src="lib/chart.umd.min.js"></script>
 		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
 	</head>
 	<body>
+		<div id="ambient-bg" class="ambient-bg" aria-hidden="true">
+			<div class="blob blob-1"></div>
+			<div class="blob blob-2"></div>
+			<div class="blob blob-3"></div>
+		</div>
 		<div class="glass-effect"></div>
 
 		<div class="container">
@@ -24,77 +29,156 @@
 						<option value="year" data-i18n-key="periodYear">Year</option>
 					</select>
 
-					<button id="export-button" title="Export data">
+					<button
+						id="export-button"
+						title="Export data (CSV)"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-download"
 						>
-							<path
-								fill-rule="evenodd"
-								d="M12 2.25a.75.75 0 01.75.75v11.69l3.22-3.22a.75.75 0 111.06 1.06l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.06l3.22 3.22V3a.75.75 0 01.75-.75zm-9 13.5a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
-								clip-rule="evenodd"
-							/>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="7 10 12 15 17 10" />
+							<line x1="12" y1="15" x2="12" y2="3" />
 						</svg>
 					</button>
 
-					<button id="lang-button" title="Change language">EN</button>
+					<button
+						id="lang-button"
+						title="Language (EN/UA/ES/DE/FR)"
+						class="tooltip-trigger"
+					>
+						EN
+					</button>
 					<div id="lang-menu" class="dropdown-menu"></div>
 
-					<button id="theme-button" data-i18n-key-title="tooltipTheme">
+					<button
+						id="theme-button"
+						data-i18n-key-title="tooltipTheme"
+						title="Switch theme"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-palette"
 						>
-							<path
-								d="M12 2.25a.75.75 0 01.75.75v.518a13.535 13.535 0 015.65 2.181.75.75 0 01-.53 1.321A12.036 12.036 0 0012 6a12.036 12.036 0 00-5.87 1.27.75.75 0 01-.53-1.32A13.535 13.535 0 0111.25 2.768V2.25a.75.75 0 01.75-.75zM4.533 8.243A13.545 13.545 0 013 12a13.545 13.545 0 011.533 3.757.75.75 0 01-1.255.787A15.045 15.045 0 001.5 12c0-2.425.57-4.722 1.588-6.79.467-.954 1.683-.902 2.106.088a.75.75 0 01-.762 1.045zM21.22 7.21a.75.75 0 01.762 1.045 15.045 15.045 0 01-1.588 6.79.75.75 0 11-1.255-.787A13.545 13.545 0 0021 12a13.545 13.545 0 00-1.533-3.757c-.424-1.028.740-1.848 2.106-.088a.75.75 0 01-.353-.944zM12 1.5a.75.75 0 01.75.75v19.5a.75.75 0 01-1.5 0V2.25A.75.75 0 0112 1.5z"
-							/>
+							<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
 						</svg>
 					</button>
 					<div id="theme-menu" class="dropdown-menu"></div>
 
-					<button id="settings-button" title="Настройки">
+					<button
+						id="categories-button"
+						data-i18n-key-title="tooltipCategories"
+						title="Manage website categories"
+						class="btn-icon tooltip-trigger relative-container"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-categories"
+						>
+							<rect x="3" y="3" width="7" height="7" />
+							<rect x="14" y="3" width="7" height="7" />
+							<rect x="14" y="14" width="7" height="7" />
+							<rect x="3" y="14" width="7" height="7" />
+						</svg>
+						<span class="notification-dot"></span>
+					</button>
+
+					<button
+						id="sync-button"
+						title="Sync with Google Drive"
+						class="btn-icon tooltip-trigger"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-sync"
 						>
 							<path
-								fill-rule="evenodd"
-								d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.49 7.49 0 00-.88.45c-.416.278-.826.588-1.22.912a.75.75 0 01-1.06-1.06c.376-.376.786-.686 1.225-.964.243-.163.473-.310.692-.441.312-.19.63-.358.955-.5l-.153-.682c-.274-1.226.716-2.398 1.94-2.398h1.843c1.224 0 2.214 1.172 1.94 2.398l-.164.732c.325.142.643.31.955.5.22.131.45.278.692.441.44.278.850.588 1.225.964a.75.75 0 01-1.06 1.06c-.394-.324-.804-.634-1.22-.912a7.49 7.49 0 00-.88-.45c-.182-.088-.277-.228-.297-.348l-.178-.072c-.151-.904-.933-1.567-1.85-1.567h-1.843zM12 9a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5z"
-								clip-rule="evenodd"
-							/>
-							<path
-								d="M8.25 15a.75.75 0 01.75-.75h6a.75.75 0 010 1.5H9a.75.75 0 01-.75-.75z"
+								d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l5.57.57"
 							/>
 						</svg>
 					</button>
 
-					<button id="pause-button" data-i18n-key-title="tooltipPause">
+					<button
+						id="settings-button"
+						title="Settings"
+						class="btn-icon tooltip-trigger"
+					>
 						<svg
-							class="pause"
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="icon-settings"
 						>
 							<path
-								fill-rule="evenodd"
-								d="M6.75 5.25a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H6.75zm8.25 0a.75.75 0 00-.75.75v12c0 .414.336.75.75.75h2.25a.75.75 0 00.75-.75v-12a.75.75 0 00-.75-.75H15z"
-								clip-rule="evenodd"
+								d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
 							/>
+							<circle cx="12" cy="12" r="3" />
+						</svg>
+					</button>
+
+					<button
+						id="pause-button"
+						data-i18n-key-title="tooltipPause"
+						title="Pause/Resume tracking"
+						class="btn-icon tooltip-trigger"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="pause icon-pause"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<line x1="10" y1="15" x2="10" y2="9" />
+							<line x1="14" y1="15" x2="14" y2="9" />
 						</svg>
 						<svg
-							class="play"
 							xmlns="http://www.w3.org/2000/svg"
 							viewBox="0 0 24 24"
-							fill="currentColor"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="play icon-play"
 						>
-							<path
-								fill-rule="evenodd"
-								d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.648c1.295.742 1.295 2.545 0 3.286L7.279 20.99c-1.25.717-2.779-.217-2.779-1.643V5.653z"
-								clip-rule="evenodd"
-							/>
+							<circle cx="12" cy="12" r="10" />
+							<polygon points="10 8 16 12 10 16 10 8" />
 						</svg>
 					</button>
 				</div>
@@ -103,7 +187,21 @@
 			<div class="main-grid">
 				<div id="live" class="card">
 					<div class="card-header">
-						<h3 class="card-title" data-i18n-key="cardTitleLive">Live Now</h3>
+						<div class="card-title-wrapper">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="card-icon"
+							>
+								<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+							</svg>
+							<h3 class="card-title" data-i18n-key="cardTitleLive">Live Now</h3>
+						</div>
 						<span class="stats-badge pulse" data-i18n-key="statusLive"
 							>LIVE</span
 						>
@@ -119,20 +217,160 @@
 
 				<div id="summary" class="card">
 					<div class="card-header">
-						<h3 class="card-title" data-i18n-key="cardTitleSummary">
-							Total Time Spent
-						</h3>
+						<div class="card-title-wrapper">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="card-icon"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<polyline points="12 6 12 12 16 14" />
+							</svg>
+							<h3 class="card-title" data-i18n-key="cardTitleSummary">
+								Total Time Spent
+							</h3>
+						</div>
 					</div>
 					<div class="card-content">
 						<h3 id="summary-title"></h3>
 						<h2 id="summary-time">00:00:00</h2>
 						<p id="comparison-insight">...</p>
+						<div
+							id="productivity-score-container"
+							style="
+								margin-top: 12px;
+								padding-top: 12px;
+								border-top: 1px solid var(--border);
+							"
+						>
+							<div
+								style="
+									display: flex;
+									justify-content: space-between;
+									align-items: center;
+									margin-bottom: 4px;
+								"
+							>
+								<span
+									style="
+										font-size: 12px;
+										font-weight: 500;
+										color: var(--text-muted);
+									"
+									data-i18n-key="productivityScore"
+									>Productivity Score</span
+								>
+								<span
+									id="productivity-score-value"
+									style="
+										font-size: 14px;
+										font-weight: 700;
+										color: var(--text-main);
+									"
+									>0%</span
+								>
+							</div>
+							<div
+								style="
+									height: 6px;
+									background: var(--surface-hover);
+									border-radius: 3px;
+									overflow: hidden;
+								"
+							>
+								<div
+									id="productivity-bar"
+									style="
+										height: 100%;
+										width: 0%;
+										background: var(--success);
+										transition: width 0.5s ease;
+									"
+								></div>
+							</div>
+						</div>
 					</div>
 				</div>
 
 				<div id="sites" class="card">
 					<div class="card-header">
-						<h3 class="card-title" data-i18n-key="cardTitleSites">Top Sites</h3>
+						<div class="card-title-wrapper">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="card-icon"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<line x1="2" y1="12" x2="22" y2="12" />
+								<path
+									d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+								/>
+							</svg>
+							<h3 class="card-title" data-i18n-key="cardTitleSites">
+								Top Sites
+							</h3>
+						</div>
+						<div class="sites-controls">
+							<div class="search-container">
+								<input
+									type="text"
+									id="sites-search"
+									class="search-input"
+									placeholder="Search sites..."
+									data-i18n-key-placeholder="searchSites"
+								/>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									class="search-icon"
+								>
+									<circle cx="11" cy="11" r="8"></circle>
+									<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+								</svg>
+							</div>
+						</div>
+						<div
+							id="bulk-actions-panel"
+							class="bulk-actions-panel"
+							style="display: none"
+						>
+							<button
+								id="bulk-select-all"
+								class="btn-secondary btn-sm"
+								data-i18n-key="selectAll"
+							>
+								Select All
+							</button>
+							<button
+								id="bulk-move-btn"
+								class="btn-primary btn-sm"
+								data-i18n-key="moveToCategory"
+							>
+								Move to Category
+							</button>
+							<button
+								id="bulk-cancel-btn"
+								class="btn-secondary btn-sm"
+								data-i18n-key="close"
+							>
+								Cancel
+							</button>
+						</div>
 						<div class="chart-toggle sites-toggle">
 							<button
 								id="sites-daily"
@@ -160,9 +398,24 @@
 
 			<div id="trend" class="card">
 				<div class="card-header">
-					<h3 class="card-title" data-i18n-key="cardTitleTrend">
-						Activity Trend
-					</h3>
+					<div class="card-title-wrapper">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="card-icon"
+						>
+							<polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+							<polyline points="17 6 23 6 23 12" />
+						</svg>
+						<h3 class="card-title" data-i18n-key="cardTitleTrend">
+							Activity Trend
+						</h3>
+					</div>
 				</div>
 				<div class="card-content">
 					<div class="chart-toggle">
@@ -173,13 +426,418 @@
 						<button id="chart-monthly" data-i18n-key="chartMonthly">
 							Months
 						</button>
+						<button id="chart-yearly" data-i18n-key="chartYearly">Years</button>
 					</div>
 					<div class="chart-container">
 						<canvas id="activity-chart"></canvas>
 					</div>
 				</div>
 			</div>
+
+			<div id="distribution" class="card">
+				<div class="card-header">
+					<div class="card-title-wrapper">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="card-icon"
+						>
+							<path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+							<path d="M22 12A10 10 0 0 0 12 2v10z" />
+						</svg>
+						<h3 class="card-title" data-i18n-key="cardTitleDistribution">
+							Time Distribution
+						</h3>
+					</div>
+				</div>
+				<div class="card-content">
+					<div class="chart-toggle">
+						<button id="dist-daily" class="active" data-i18n-key="chartDaily">
+							Days
+						</button>
+						<button id="dist-weekly" data-i18n-key="chartWeekly">Weeks</button>
+						<button id="dist-monthly" data-i18n-key="chartMonthly">
+							Months
+						</button>
+						<button id="dist-yearly" data-i18n-key="chartYearly">Years</button>
+					</div>
+					<div class="chart-container">
+						<canvas id="distribution-chart"></canvas>
+					</div>
+				</div>
+			</div>
+
+			<!-- Flow Diagram -->
+			<div id="flow-diagram" class="card">
+				<div class="card-header">
+					<div class="card-title-wrapper">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="card-icon"
+						>
+							<polyline points="16 18 22 12 16 6" />
+							<polyline points="8 6 2 12 8 18" />
+						</svg>
+						<h3 class="card-title" data-i18n-key="cardTitleFlow">
+							Site Transitions Flow
+						</h3>
+					</div>
+				</div>
+				<div class="card-content">
+					<div id="flow-container" style="padding: 20px; min-height: 300px">
+						<p
+							id="flow-info"
+							style="
+								text-align: center;
+								color: var(--text-muted);
+								margin: 20px 0;
+							"
+							data-i18n-key="flowInfo"
+						>
+							Shows the most common paths between websites
+						</p>
+						<div id="flow-viz"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Trends Analysis -->
+			<div id="trends-analysis" class="card">
+				<div class="card-header">
+					<div class="card-title-wrapper">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class="card-icon"
+						>
+							<path d="M3 3v18h18" />
+							<path d="M18 17V9" />
+							<path d="M13 17V5" />
+							<path d="M8 17v-3" />
+						</svg>
+						<h3 class="card-title" data-i18n-key="cardTitleTrends">
+							Weekly Trends & Insights
+						</h3>
+					</div>
+				</div>
+				<div class="card-content">
+					<div id="trends-container">
+						<div id="trends-insights" style="margin-bottom: 20px">
+							<!-- Auto-generated insights will appear here -->
+						</div>
+						<div class="chart-container">
+							<canvas id="trends-chart"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
+
+		<div id="settings-modal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2 data-i18n-key="settingsTitle">Settings</h2>
+					<button class="modal-close">&times;</button>
+				</div>
+				<div class="modal-body">
+					<div class="settings-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+						<label for="ambient-toggle" data-i18n-key="settingAmbient">Visual Effects (Animations & 3D)</label>
+						<label class="toggle-switch">
+							<input type="checkbox" id="ambient-toggle" checked>
+							<span class="slider"></span>
+						</label>
+					</div>
+					<div class="settings-group">
+						<label for="chart-style-select" data-i18n-key="settingChartStyle">Chart Style</label>
+						<select id="chart-style-select" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-primary); margin-bottom: 15px;">
+							<option value="line" data-i18n-key="chartStyleLine">Wave (Area)</option>
+							<option value="bar" data-i18n-key="chartStyleBar">Columns (Bar)</option>
+						</select>
+					</div>
+					<div class="settings-group">
+						<label for="timezone-select" data-i18n-key="timezone"
+							>Timezone</label
+						>
+						<select
+							id="timezone-select"
+							style="
+								width: 100%;
+								padding: 6px;
+								border-radius: 4px;
+								border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+								background: var(--glass-bg, rgba(20, 20, 20, 0.6));
+								color: var(--text-primary, #f5f5f5);
+							"
+						>
+							<option value="auto" data-i18n-key="timezoneAuto">
+								Auto (Browser)
+							</option>
+							<option value="UTC">UTC (GMT+0)</option>
+							<option value="UTC+1">UTC+1</option>
+							<option value="UTC+2">UTC+2</option>
+							<option value="UTC+3">UTC+3</option>
+							<option value="UTC+4">UTC+4</option>
+							<option value="UTC+5">UTC+5</option>
+							<option value="UTC+6">UTC+6</option>
+							<option value="UTC+7">UTC+7</option>
+							<option value="UTC+8">UTC+8</option>
+							<option value="UTC+9">UTC+9</option>
+							<option value="UTC+10">UTC+10</option>
+							<option value="UTC+11">UTC+11</option>
+							<option value="UTC+12">UTC+12</option>
+							<option value="UTC-1">UTC-1</option>
+							<option value="UTC-2">UTC-2</option>
+							<option value="UTC-3">UTC-3</option>
+							<option value="UTC-4">UTC-4</option>
+							<option value="UTC-5">UTC-5</option>
+							<option value="UTC-6">UTC-6</option>
+							<option value="UTC-7">UTC-7</option>
+							<option value="UTC-8">UTC-8</option>
+							<option value="UTC-9">UTC-9</option>
+							<option value="UTC-10">UTC-10</option>
+							<option value="UTC-11">UTC-11</option>
+							<option value="UTC-12">UTC-12</option>
+						</select>
+					</div>
+
+					<div class="settings-group">
+						<button
+							id="manage-categories-btn"
+							class="btn-secondary"
+							data-i18n-key="manageCategories"
+							style="width: 100%; margin-top: 4px"
+						>
+							Manage Categories
+						</button>
+					</div>
+
+					<div
+						class="settings-group"
+						style="font-size: 13px; color: var(--text-secondary, #888)"
+					>
+						<a
+							href="https://github.com/MaksssM/BrowserTimeTracker"
+							target="_blank"
+							style="color: var(--accent-color, #4f46e5)"
+							>GitHub Project</a
+						>
+						<p id="usage-days" style="margin: 8px 0 0 0; font-weight: bold">
+							...
+						</p>
+					</div>
+
+					<div
+						class="settings-group"
+						style="
+							padding: 12px;
+							background: linear-gradient(
+								135deg,
+								rgba(99, 102, 241, 0.1) 0%,
+								rgba(236, 72, 153, 0.1) 100%
+							);
+							border-radius: 8px;
+							border-left: 3px solid #6366f1;
+						"
+					>
+						<div
+							style="
+								display: flex;
+								align-items: center;
+								gap: 8px;
+								margin-bottom: 8px;
+							"
+						>
+							<span style="font-size: 18px">🏷️</span>
+							<strong style="font-size: 13px" data-i18n-key="siteCategories"
+								>Site Categories</strong
+							>
+						</div>
+						<p
+							style="
+								margin: 0;
+								font-size: 12px;
+								color: var(--text-secondary, #888);
+								line-height: 1.4;
+							"
+							data-i18n-key="organizeWebsites"
+						>
+							Organize your websites into categories (Work, Learning,
+							Entertainment, Social, Shopping, Other). Tap the Categories button
+							in the header to manage them.
+						</p>
+					</div>
+
+					<div class="settings-group" style="font-size: 13px">
+						<strong data-i18n-key="howToUse">How to use?</strong>
+						<ul style="margin: 4px 0 0 16px; padding: 0">
+							<li data-i18n-key="howToUse1">
+								Open extension to see statistics.
+							</li>
+							<li data-i18n-key="howToUse2">
+								Use tabs to view top sites, trends, time distribution.
+							</li>
+							<li data-i18n-key="howToUse3">Set up break reminders.</li>
+						</ul>
+					</div>
+
+					<div class="settings-group">
+						<button
+							id="clear-data-btn"
+							class="btn-secondary"
+							style="width: 100%; margin-top: 4px"
+							data-i18n-key="clearDataBtn"
+						>
+							Clear all data
+						</button>
+						<p
+							style="
+								font-size: 12px;
+								color: var(--text-secondary, #888);
+								margin: 4px 0 0 0;
+							"
+							data-i18n-key="clearDataWarning"
+						>
+							Warning: this action will delete all statistics!
+						</p>
+					</div>
+					<div class="settings-group">
+						<button
+							id="feedback-btn"
+							class="btn-secondary"
+							style="width: 100%; margin-top: 4px"
+							data-i18n-key="feedbackBtn"
+						>
+							Leave feedback
+						</button>
+					</div>
+
+					<div class="settings-group">
+						<a
+							href="https://t.me/your_support_channel"
+							target="_blank"
+							rel="noopener"
+							style="
+								color: var(--accent-color, #4f46e5);
+								text-decoration: underline;
+								font-size: 13px;
+							"
+							data-i18n-key="supportFeedback"
+						>
+							Support / Feedback
+						</a>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button
+						id="reset-theme-btn"
+						class="btn-secondary"
+						data-i18n-key="resetTheme"
+					>
+						Reset
+					</button>
+					<button
+						id="save-settings-btn"
+						class="btn-primary"
+						data-i18n-key="saveSettings"
+					>
+						Save
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="categories-modal" class="modal">
+			<div class="modal-content modal-large">
+				<div class="modal-header">
+					<h2 data-i18n-key="manageCategories">Manage Site Categories</h2>
+					<button class="modal-close" id="categories-modal-close">
+						&times;
+					</button>
+				</div>
+				<div class="modal-body flex-column">
+					<div class="create-category-section">
+						<div class="section-label" data-i18n-key="createCategory">
+							Create Category
+						</div>
+						<div class="input-row">
+							<input
+								type="text"
+								id="new-category-name"
+								placeholder="Category Name"
+								class="modern-input"
+								data-i18n-key-placeholder="categoryName"
+							/>
+							<input
+								type="color"
+								id="new-category-color"
+								value="#6366f1"
+								class="color-input"
+								title="Color"
+							/>
+							<button
+								id="create-category-btn"
+								class="btn-primary"
+								data-i18n-key="create"
+							>
+								Create
+							</button>
+						</div>
+					</div>
+
+					<div class="add-site-section">
+						<div class="section-label" data-i18n-key="addNewSite">
+							Add New Site
+						</div>
+						<div class="input-row">
+							<input
+								type="text"
+								id="new-site-input"
+								placeholder="example.com or example.org"
+								class="modern-input"
+								data-i18n-key-placeholder="placeholderSite"
+							/>
+						</div>
+						<div
+							class="category-buttons-grid"
+							id="category-buttons-container"
+						></div>
+					</div>
+
+					<div class="categories-list-section">
+						<div class="section-label" data-i18n-key="yourCategories">
+							Your Categories
+						</div>
+						<div id="categories-list" class="categories-list"></div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button
+						id="categories-close-btn"
+						class="btn-primary"
+						data-i18n-key="close"
+					>
+						Close
+					</button>
+				</div>
+			</div>
+		</div>
+
 		<script type="module" src="popup.js"></script>
 	</body>
 </html>

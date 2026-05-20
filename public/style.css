@@ -284,7 +284,7 @@ body {
 
 .controls select,
 .controls button {
-	padding: 8px 12px;
+	padding: 0;
 	border-radius: var(--border-radius-sm);
 	font-size: 13px;
 	font-weight: 600;
@@ -323,8 +323,12 @@ body {
 }
 
 .controls button {
-	width: 32px;
-	height: 32px;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .controls select:hover,
@@ -344,13 +348,13 @@ body {
 }
 
 .controls button svg {
-	width: 18px;
-	height: 18px;
-	transition: all var(--transition-smooth);
+	width: 16px;
+	height: 16px;
+	transition: transform 160ms cubic-bezier(0.2,0.9,0.2,1), opacity 140ms ease;
 }
 
 .controls button:hover svg {
-	transform: scale(1.15);
+	transform: scale(1.08);
 }
 
 .dropdown-menu {
@@ -509,19 +513,14 @@ body.paused #pause-button .play {
 	position: relative;
 	overflow: hidden;
 	box-shadow: var(--card-shadow);
-	transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.card:hover {
-	transform: translateY(-2px);
-	box-shadow: var(--card-hover-shadow);
-	border-color: rgba(255, 255, 255, 0.15);
-}
 	opacity: 0;
 	transform: translateY(20px);
 	animation: cardEnter 0.8s var(--ease-out) forwards;
-	transition: all var(--transition-smooth);
-	box-shadow: var(--card-shadow);
+	transition:
+		transform var(--transition-fast),
+		box-shadow var(--transition-fast),
+		border-color var(--transition-fast),
+		background-color var(--transition-fast);
 	background-image: linear-gradient(
 		135deg,
 		var(--card-bg-light) 0%,
@@ -529,7 +528,12 @@ body.paused #pause-button .play {
 	);
 	background-position: 0 0;
 	background-size: 200% 200%;
-	background-attachment: fixed;
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--card-hover-shadow);
+	border-color: rgba(255, 255, 255, 0.15);
 }
 
 .card::after {
@@ -918,7 +922,6 @@ body.paused #pause-button .play {
 		transform: translateY(0) scale(1);
 		filter: blur(0);
 	}
-}
 }
 
 @keyframes fadeIn {
@@ -1461,14 +1464,14 @@ body.paused #pause-button .play {
 /* Icon Button Improvements */
 .btn-icon {
 	position: relative;
-	width: 32px;
-	height: 32px;
+	width: 34px;
+	height: 34px;
 	padding: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	border-radius: 8px;
-	transition: all var(--transition-fast);
+	transition: transform 180ms cubic-bezier(0.2,0.9,0.2,1), box-shadow 220ms ease, background 200ms ease;
 	background: var(--card-bg-light);
 	border: 1px solid var(--glass-border);
 	color: var(--text-primary);
@@ -1476,25 +1479,37 @@ body.paused #pause-button .play {
 }
 
 .btn-icon:hover {
-	background: rgba(var(--accent), 0.1);
-	border-color: var(--accent);
+	background: rgba(var(--accent), 0.08);
+	border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 	color: var(--accent);
-	transform: scale(1.05);
-	box-shadow: 0 4px 12px var(--accent-glow);
+	transform: scale(1.03);
+	box-shadow: 0 6px 20px rgba(0,0,0,0.06), 0 0 10px var(--accent-glow);
 }
 
 .btn-icon:active {
-	transform: scale(0.95);
+	transform: scale(0.97);
 }
 
 .btn-icon svg {
-	width: 18px;
-	height: 18px;
+	width: 16px;
+	height: 16px;
 	stroke-width: 2;
 	stroke-linecap: round;
 	stroke-linejoin: round;
-	transition: all var(--transition-fast);
+	transition: transform 180ms cubic-bezier(0.2,0.9,0.2,1), opacity 160ms ease;
 }
+
+/* Slight scale for svg on hover (kept tiny to avoid layout jump) */
+.btn-icon:hover svg { transform: scale(1.06); }
+
+/* Appear / fade-in used across UI */
+.appear { animation: appearFade .34s cubic-bezier(0.2,0.9,0.2,1) both; }
+@keyframes appearFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Skeleton loading */
+.skeleton { position: relative; overflow: hidden; background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.02) 100%); }
+.skeleton::after { content: ''; position: absolute; top: 0; left: -120%; height: 100%; width: 120%; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0) 100%); animation: shine 1.4s linear infinite; }
+@keyframes shine { 0% { left: -120%; } 100% { left: 120%; } }
 
 /* Icon specific animations */
 .icon-download {
@@ -1562,47 +1577,28 @@ body.paused #pause-button .play {
 	border-bottom: none;
 }
 
-/* Rank Badge */
-.rank-badge {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 24px;
+/* Ambient Background (smoother, softer blobs) */
+.ambient-bg {
+	position: fixed;
+	top: 0; left: 0; width: 100vw; height: 100vh;
+	z-index: -1;
+	pointer-events: none;
+	overflow: hidden;
+	opacity: 0.65;
+	transition: opacity 420ms cubic-bezier(0.2,0.9,0.2,1);
+}
+.blob {
+	position: absolute;
 	border-radius: 50%;
-	font-weight: 700;
-	font-size: 12px;
-	margin-right: 8px;
-	background: linear-gradient(
-		135deg,
-		var(--accent) 0%,
-		var(--accent-light) 100%
-	);
-	color: white;
-	box-shadow: 0 2px 8px var(--accent-glow);
-	transition: all var(--transition-fast);
+	filter: blur(72px);
+	animation: float 28s infinite cubic-bezier(0.2,0.8,0.2,1) alternate;
+	will-change: transform, opacity;
 }
-
-.site-item:hover .rank-badge {
-	transform: scale(1.15) rotate(360deg);
-	box-shadow: 0 4px 15px var(--accent-glow);
-}
-
-/* Summary Values */
-.summary-value {
-	font-size: 12px;
-	color: var(--text-secondary);
-	transition: all var(--transition-fast);
-}
-
-.summary-value:hover {
-	color: var(--accent);
-	transform: scale(1.05);
-}
-
-/* Live Timer Styling */
-#live-timer {
-	font-size: 44px;
+.blob-1 { top: -12%; left: -12%; width: 48vw; height: 48vw; background: linear-gradient(135deg, rgba(43,196,138,0.16), rgba(33,150,243,0.06)); animation-delay: 0s; }
+.blob-2 { bottom: -22%; right: -12%; width: 56vw; height: 56vw; background: linear-gradient(135deg, rgba(33,150,243,0.12), rgba(156,39,176,0.04)); animation-delay: -6s; }
+.blob-3 { top: 38%; left: 62%; width: 38vw; height: 38vw; background: linear-gradient(135deg, rgba(156,39,176,0.12), rgba(43,196,138,0.04)); animation-delay: -12s; }
+@keyframes float { 0% { transform: translate(0, 0) scale(1); } 40% { transform: translate(40px, -60px) scale(1.06); } 70% { transform: translate(-28px, 28px) scale(0.96); } 100% { transform: translate(0, 0) scale(1); } }
+body.no-ambient .ambient-bg { opacity: 0; }
 	font-weight: 800;
 	background: linear-gradient(
 		135deg,
@@ -2325,4 +2321,153 @@ body[data-theme='nebula'] {
 ::selection {
 	background: var(--accent);
 	color: white;
+}
+/* Ambient Background */
+.ambient-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; overflow: hidden; opacity: 0.6; transition: opacity var(--transition-smooth); }
+.blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float 20s infinite ease-in-out alternate; }
+.blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: rgba(43, 196, 138, 0.15); animation-delay: 0s; }
+.blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: rgba(33, 150, 243, 0.1); animation-delay: -5s; }
+.blob-3 { top: 40%; left: 60%; width: 40vw; height: 40vw; background: rgba(156, 39, 176, 0.1); animation-delay: -10s; }
+@keyframes float { 0% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } 100% { transform: translate(0, 0) scale(1); } }
+body.no-ambient .ambient-bg { opacity: 0; }
+
+/* 3D Cards */
+.card-3d-wrap {
+	transform-style: preserve-3d;
+	perspective: 1200px;
+	transform: perspective(1200px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+	transition: transform 260ms cubic-bezier(0.2,0.9,0.2,1), box-shadow 260ms cubic-bezier(0.2,0.9,0.2,1);
+	will-change: transform, box-shadow;
+}
+.card-3d-wrap:hover { box-shadow: -6px 14px 40px rgba(0,0,0,0.08), 0 0 18px var(--accent-glow); }
+body.no-ambient .card-3d-wrap { transform: none; transition: none; }
+
+/* Toggle switch UI */
+.toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px; transition: .3s; }
+.toggle-switch .slider:before { position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-primary); border-radius: 50%; transition: .3s; }
+.toggle-switch input:checked + .slider { background-color: var(--accent-green); border-color: var(--accent-green); }
+.toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+
+/* ===== Analytics and button fixes ===== */
+:root {
+	--surface: var(--glass-bg);
+	--surface-hover: var(--card-bg-light);
+	--text-main: var(--text-primary);
+	--text-muted: var(--text-secondary);
+	--warning: var(--accent-yellow);
+	--success: var(--accent-green);
+}
+
+#analytics {
+	order: 10;
+	min-height: 360px;
+}
+
+#analytics .card-header {
+	align-items: stretch;
+	flex-direction: column;
+	gap: 12px;
+}
+
+#analytics-content {
+	min-height: 270px;
+	justify-content: flex-start;
+}
+
+.chart-views-toggle {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 5px;
+	padding: 4px;
+	border: 1px solid var(--glass-border);
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.045);
+}
+
+.chart-views-toggle button,
+.chart-toggle button,
+.btn-primary,
+.btn-secondary,
+.controls select,
+.controls button,
+.btn-icon,
+.modal-close {
+	border-radius: 8px;
+	letter-spacing: 0;
+	transition:
+		background 160ms ease,
+		border-color 160ms ease,
+		color 160ms ease,
+		box-shadow 160ms ease,
+		transform 160ms ease;
+}
+
+.chart-views-toggle button {
+	min-width: 0;
+	min-height: 30px;
+	padding: 7px 6px;
+	border: 0;
+	background: transparent;
+	color: var(--text-secondary);
+	font: 700 10px/1 var(--font-sans);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.chart-views-toggle button:hover,
+.chart-toggle button:hover:not(.active),
+.btn-secondary:hover,
+.controls select:hover,
+.controls button:hover,
+.btn-icon:hover {
+	background: rgba(255, 255, 255, 0.085);
+	border-color: var(--accent);
+	color: var(--text-primary);
+	transform: translateY(-1px);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+.chart-views-toggle button.active,
+.chart-toggle button.active,
+.btn-primary {
+	color: #fff;
+	border-color: transparent;
+	background: linear-gradient(135deg, var(--accent), var(--accent-light));
+	box-shadow: 0 8px 22px var(--accent-glow);
+}
+
+.chart-views-toggle button.active:hover,
+.chart-toggle button.active:hover,
+.btn-primary:hover {
+	filter: brightness(1.06);
+	transform: translateY(-1px);
+}
+
+.controls button,
+.btn-icon {
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	background: rgba(255, 255, 255, 0.055);
+	border: 1px solid var(--glass-border);
+}
+
+.controls button svg,
+.btn-icon svg,
+.site-category-btn svg,
+.site-delete-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+.tooltip-trigger {
+	overflow: visible !important;
+}
+
+.bulk-actions-panel.visible {
+	display: flex !important;
 }
