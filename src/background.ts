@@ -156,7 +156,6 @@ import { GDriveSyncService } from './gdrive-sync'
 					timestamp: Date.now(),
 				})
 
-				// Keep only last 1000 transitions to avoid storage bloat
 				if (siteTransitions.length > 1000) {
 					siteTransitions = siteTransitions.slice(-1000)
 				}
@@ -203,24 +202,23 @@ import { GDriveSyncService } from './gdrive-sync'
 		console.log('Cleaned up old data')
 	}
 
-	// Обробник повідомлень для синхронізації
-	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+	chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 		if (request.action === 'syncWithDrive') {
 			handleSync()
 				.then(result => sendResponse({ success: true, result }))
 				.catch(error => sendResponse({ success: false, error: error.message }))
-			return true // Вказує, що sendResponse буде викликано асинхронно
+			return true
 		}
+		return false
 	})
 
 	const handleSync = async () => {
 		console.log('Starting sync process...')
 		try {
-			// 1. Спочатку завантажуємо дані з хмари
+			// Pull cloud data first, then upload the merged local result.
 			const cloudData = await syncService.pullFromCloud()
 
 			if (cloudData) {
-				// Мержимо(об'єднуємо) хмарні дані з локальними
 				for (const date in cloudData) {
 					if (!dailyStats[date]) {
 						dailyStats[date] = cloudData[date]
@@ -229,7 +227,6 @@ import { GDriveSyncService } from './gdrive-sync'
 							if (!dailyStats[date][host]) {
 								dailyStats[date][host] = cloudData[date][host]
 							} else {
-								// Беремо максимальне значення, щоб убезпечити від втрати часу
 								dailyStats[date][host] = Math.max(
 									dailyStats[date][host],
 									cloudData[date][host],
@@ -238,15 +235,13 @@ import { GDriveSyncService } from './gdrive-sync'
 						}
 					}
 				}
-				// Зберігаємо об'єднані дані локально
 				await chrome.storage.local.set({ dailyStats })
 			}
 
-			// 2. Відправляємо оновлені дані назад в хмару
 			await syncService.pushToCloud(dailyStats)
 
 			console.log('Sync completed successfully')
-			return 'Синхронізація успішна'
+			return 'Sync completed successfully'
 		} catch (error: any) {
 			console.error('Sync failed:', error)
 			throw error
@@ -266,9 +261,6 @@ import { GDriveSyncService } from './gdrive-sync'
 		const sessionDuration = Date.now() / 1000 - currentState.currentSessionStart
 		const sessionDurationMs = sessionDuration * 1000
 
-		// Только показываем напоминание если:
-		// 1. Время превышает порог
-		// 2. Это не тот хост, на который уже показали напоминание
 		if (
 			sessionDurationMs >= reminderThreshold &&
 			lastRemindedHost !== currentState.currentHost
@@ -385,6 +377,16 @@ import { GDriveSyncService } from './gdrive-sync'
 
 	chrome.storage.onChanged.addListener((changes, area) => {
 		if (area === 'local') {
+			if (changes.dailyStats) {
+				dailyStats = changes.dailyStats.newValue || {}
+			}
+			if (changes.siteTransitions) {
+				siteTransitions = changes.siteTransitions.newValue || []
+			}
+			if (changes.reminderThreshold) {
+				reminderThreshold =
+					changes.reminderThreshold.newValue || 30 * 60 * 1000
+			}
 			if (changes.isPaused) {
 				isPaused = changes.isPaused.newValue
 				console.log('Pause state changed to:', isPaused)
@@ -416,9 +418,13 @@ import { GDriveSyncService } from './gdrive-sync'
 				isPaused: isPaused,
 			})
 		} else if (request.type === 'EXPORT_DATA') {
+			saveCurrentSession()
 			sendResponse({
 				success: true,
-				data: dailyStats,
+				data: {
+					dailyStats,
+					siteTransitions,
+				},
 			})
 		} else if (request.type === 'CLEAR_DATA') {
 			dailyStats = {}

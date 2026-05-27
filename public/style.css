@@ -13,7 +13,7 @@
 	--transition-fast: 0.2s var(--ease-out);
 }
 
-/* Цветовые темы */
+/* Color themes */
 body[data-theme='monolith'] {
 	--bg: #0f172a;
 	--bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
@@ -283,7 +283,7 @@ body {
 }
 
 .controls select,
-.controls button {
+.controls > button {
 	padding: 0;
 	border-radius: var(--border-radius-sm);
 	font-size: 13px;
@@ -302,15 +302,6 @@ body {
 	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.controls select::after,
-.controls button::after {
-	content: '';
-	position: absolute;
-	top: 0; left: 0; right: 0; bottom: 0;
-	background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
-	pointer-events: none;
-}
-
 .controls select {
 	padding: 8px 12px;
 	min-width: 100px;
@@ -322,7 +313,7 @@ body {
 	padding-right: 35px;
 }
 
-.controls button {
+.controls > button {
 	width: 34px;
 	height: 34px;
 	padding: 0;
@@ -332,7 +323,7 @@ body {
 }
 
 .controls select:hover,
-.controls button:hover {
+.controls > button:hover {
 	border-color: var(--accent);
 	color: var(--text-primary);
 	transform: translateY(-1px);
@@ -341,19 +332,19 @@ body {
 }
 
 .controls select:focus,
-.controls button:focus {
+.controls > button:focus {
 	outline: none;
 	box-shadow: 0 0 0 3px var(--accent-glow);
 	border-color: var(--accent);
 }
 
-.controls button svg {
+.controls > button svg {
 	width: 16px;
 	height: 16px;
 	transition: transform 160ms cubic-bezier(0.2,0.9,0.2,1), opacity 140ms ease;
 }
 
-.controls button:hover svg {
+.controls > button:hover svg {
 	transform: scale(1.08);
 }
 
@@ -383,23 +374,26 @@ body {
 }
 
 .dropdown-menu button {
-	width: 100%;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	border: none;
-	text-align: left;
-	background: none;
-	padding: 10px 12px;
-	color: var(--text-secondary);
-	border-radius: var(--border-radius-sm);
-	transition: all var(--transition-smooth);
-	cursor: pointer;
-	font-size: 13px;
-	font-weight: 500;
-	justify-content: flex-start;
+width: 100% !important;
+min-width: 140px;
+display: flex !important;
+align-items: center;
+gap: 10px;
+border: none;
+text-align: left;
+background: transparent;
+padding: 10px 12px !important;
+color: var(--text-secondary);
+border-radius: var(--border-radius-sm);
+transition: all var(--transition-smooth);
+cursor: pointer;
+justify-content: flex-start;
+font-size: 13px;
+font-weight: 500;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
 }
-
 .dropdown-menu button:hover {
 	background: rgba(255, 255, 255, 0.1);
 	color: var(--text-primary);
@@ -433,11 +427,7 @@ body.paused #pause-button .play {
 	display: block;
 }
 
-#lang-button {
-	width: 42px;
-	font-weight: 600;
-	font-size: 12px;
-}
+
 
 .error-container {
 	display: none;
@@ -850,7 +840,7 @@ body.paused #pause-button .play {
 	box-shadow: 0 2px 12px var(--accent-glow);
 }
 
-/* Графики */
+/* Charts */
 .chart-container {
 	height: 250px;
 	width: 100%;
@@ -910,7 +900,7 @@ body.paused #pause-button .play {
 	color: var(--accent-red);
 }
 
-/* Анимации */
+/* Animations */
 @keyframes cardEnter {
 	from {
 		opacity: 0;
@@ -1002,7 +992,7 @@ body.paused #pause-button .play {
 	}
 }
 
-/* Адаптивность */
+/* Responsive layout */
 @media (max-height: 600px) {
 	body {
 		min-height: 450px;
@@ -1529,18 +1519,7 @@ body.paused #pause-button .play {
 	animation: slideInRight 0.5s var(--ease-out);
 }
 
-/* Button header controls spacing */
-.controls button {
-	margin: 0 4px;
-}
 
-.controls button:first-child {
-	margin-left: 0;
-}
-
-.controls button:last-child {
-	margin-right: 0;
-}
 
 /* Enhanced Card Interactions */
 .card-content {
@@ -1649,92 +1628,9 @@ body.no-ambient .ambient-bg { opacity: 0; }
 	box-shadow: 0 0 12px var(--accent-glow);
 }
 
-/* Language Menu Button */
-#lang-button {
-	width: 32px;
-	height: 32px;
-	padding: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-weight: 700;
-	font-size: 10px;
-	background: var(--card-bg-light);
-	border: 1px solid var(--glass-border);
-	border-radius: 8px;
-	color: var(--text-primary);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	flex-shrink: 0;
-}
 
-#lang-button:hover {
-	background: rgba(var(--accent), 0.1);
-	border-color: var(--accent);
-	color: var(--accent);
-	transform: scale(1.05);
-	box-shadow: 0 4px 12px var(--accent-glow);
-}
 
-/* Dropdown Menu Enhancements */
-.dropdown-menu {
-	position: absolute;
-	top: 100%;
-	right: 0;
-	margin-top: 4px;
-	background: var(--glass-bg);
-	border: 1px solid var(--glass-border);
-	border-radius: var(--border-radius-md);
-	backdrop-filter: blur(20px);
-	-webkit-backdrop-filter: blur(20px);
-	min-width: 140px;
-	max-width: 180px;
-	z-index: 1001;
-	display: none;
-	flex-direction: column;
-	box-shadow: var(--card-shadow);
-	overflow: hidden;
-	animation: slideInDown 0.2s var(--ease-out);
-}
 
-.dropdown-menu.active {
-	display: flex;
-}
-
-.dropdown-menu button {
-	flex: none;
-	width: 100%;
-	padding: 10px 14px;
-	background: transparent;
-	border: none;
-	border-bottom: 1px solid var(--glass-border);
-	color: var(--text-secondary);
-	text-align: left;
-	cursor: pointer;
-	font-size: 12px;
-	font-weight: 500;
-	transition: all var(--transition-fast);
-	white-space: nowrap;
-}
-
-.dropdown-menu button:last-child {
-	border-bottom: none;
-}
-
-.dropdown-menu button:hover {
-	background: rgba(var(--accent), 0.1);
-	color: var(--accent);
-	padding-left: 20px;
-}
-
-.dropdown-menu button.active {
-	background: linear-gradient(
-		135deg,
-		var(--accent) 0%,
-		var(--accent-light) 100%
-	);
-	color: white;
-}
 
 /* Additional Polish */
 .live-header {
@@ -1844,82 +1740,11 @@ input[type='number']:focus {
 	transition: all var(--transition-fast);
 }
 
-/* Tooltip Styling */
-.tooltip-trigger {
-	position: relative;
-}
 
-.tooltip-trigger::after {
-	content: attr(title);
-	position: absolute;
-	bottom: 100%;
-	left: 50%;
-	transform: translateX(-50%);
-	margin-bottom: 8px;
-	padding: 8px 12px;
-	background: var(--accent);
-	color: white;
-	border-radius: 6px;
-	font-size: 11px;
-	font-weight: 600;
-	white-space: nowrap;
-	pointer-events: none;
-	opacity: 0;
-	visibility: hidden;
-	transition: all var(--transition-fast);
-	z-index: 1002;
-	box-shadow: 0 4px 12px var(--accent-glow);
-	letter-spacing: 0.3px;
-}
 
-.tooltip-trigger::before {
-	content: '';
-	position: absolute;
-	bottom: 100%;
-	left: 50%;
-	transform: translateX(-50%);
-	margin-bottom: -4px;
-	border: 4px solid transparent;
-	border-top-color: var(--accent);
-	opacity: 0;
-	visibility: hidden;
-	transition: all var(--transition-fast);
-	z-index: 1002;
-	pointer-events: none;
-}
+	
 
-.tooltip-trigger:hover::after {
-	opacity: 1;
-	visibility: visible;
-	transform: translateX(-50%) translateY(-4px);
-}
-
-.tooltip-trigger:hover::before {
-	opacity: 1;
-	visibility: visible;
-	transform: translateX(-50%) translateY(0);
-}
-
-/* Prevent tooltip overflow on right edge */
-@media (max-width: 480px) {
-	.tooltip-trigger::after {
-		right: 0;
-		left: auto;
-		transform: translateX(0);
-		margin-right: 8px;
-		white-space: normal;
-		max-width: 120px;
-	}
-
-	.tooltip-trigger::before {
-		right: 4px;
-		left: auto;
-		transform: none;
-	}
-
-	.tooltip-trigger:hover::after {
-		transform: translateX(0) translateX(-4px);
-	}
+	
 }
 
 /* Distribution Chart Enhanced Styling */
@@ -2391,7 +2216,7 @@ body.no-ambient .card-3d-wrap { transform: none; transition: none; }
 .btn-primary,
 .btn-secondary,
 .controls select,
-.controls button,
+.controls > button,
 .btn-icon,
 .modal-close {
 	border-radius: 8px;
@@ -2422,7 +2247,7 @@ body.no-ambient .card-3d-wrap { transform: none; transition: none; }
 .chart-toggle button:hover:not(.active),
 .btn-secondary:hover,
 .controls select:hover,
-.controls button:hover,
+.controls > button:hover,
 .btn-icon:hover {
 	background: rgba(255, 255, 255, 0.085);
 	border-color: var(--accent);
@@ -2447,7 +2272,7 @@ body.no-ambient .card-3d-wrap { transform: none; transition: none; }
 	transform: translateY(-1px);
 }
 
-.controls button,
+.controls > button,
 .btn-icon {
 	width: 34px;
 	height: 34px;
@@ -2456,7 +2281,7 @@ body.no-ambient .card-3d-wrap { transform: none; transition: none; }
 	border: 1px solid var(--glass-border);
 }
 
-.controls button svg,
+.controls > button svg,
 .btn-icon svg,
 .site-category-btn svg,
 .site-delete-btn svg {
@@ -2464,10 +2289,22 @@ body.no-ambient .card-3d-wrap { transform: none; transition: none; }
 	height: 16px;
 }
 
-.tooltip-trigger {
-	overflow: visible !important;
-}
+
 
 .bulk-actions-panel.visible {
 	display: flex !important;
 }
+
+
+
+
+
+
+
+
+
+#lang-button {
+  font-size: 11px;
+  font-weight: 700;
+}
+

@@ -15,7 +15,9 @@
 		"vite": "^5.0.0"
 	},
 	"dependencies": {
+		"@types/sortablejs": "^1.15.9",
 		"chart.js": "^4.4.0",
-		"date-fns": "^2.30.0"
+		"date-fns": "^2.30.0",
+		"sortablejs": "^1.15.7"
 	}
 }

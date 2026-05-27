@@ -144,7 +144,7 @@ select {
 	display: none;
 }
 
-/* Теми */
+/* Themes */
 body[data-theme='monolith'] {
 	--bg: #111;
 	--text: #fff;
@@ -157,4 +157,4 @@ body[data-theme='nord'] {
 	--glass: rgba(46, 52, 64, 0.8);
 	--accent: #88c0d0;
 }
-/* Додай інші теми за потребою */
+/* Add other themes as needed */
