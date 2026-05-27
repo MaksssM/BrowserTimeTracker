@@ -1,13 +1,13 @@
 export class GDriveSyncService {
 	private readonly FILENAME = 'zenith_time_tracker_backup.json'
 
-	// 1. Отримуємо токен доступу до Google
 	private async getAuthToken(interactive: boolean = true): Promise<string> {
 		return new Promise((resolve, reject) => {
 			chrome.identity.getAuthToken({ interactive }, token => {
 				if (chrome.runtime.lastError || !token) {
 					reject(
-						chrome.runtime.lastError?.message || 'Не вдалося отримати токен',
+						chrome.runtime.lastError?.message ||
+							'Could not get a Google access token',
 					)
 				} else {
 					resolve(token)
@@ -16,7 +16,6 @@ export class GDriveSyncService {
 		})
 	}
 
-	// 2. Шукаємо наш файл з бекапом в прихованій папці додатку (appDataFolder)
 	private async getFileId(token: string): Promise<string | null> {
 		const response = await fetch(
 			`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${this.FILENAME}'`,
@@ -28,13 +27,12 @@ export class GDriveSyncService {
 		return data.files && data.files.length > 0 ? data.files[0].id : null
 	}
 
-	// 3. Завантажуємо дані з Google Drive
 	public async pullFromCloud(): Promise<any> {
 		try {
 			const token = await this.getAuthToken(true)
 			const fileId = await this.getFileId(token)
 
-			if (!fileId) return null // Файлу ще немає
+			if (!fileId) return null
 
 			const response = await fetch(
 				`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
@@ -43,19 +41,18 @@ export class GDriveSyncService {
 				},
 			)
 
-			if (!response.ok) throw new Error('Помилка завантаження з GDrive')
+			if (!response.ok) throw new Error('Failed to download from Google Drive')
 			return await response.json()
 		} catch (error) {
-			console.error('Помилка Pull-синхронізації:', error)
+			console.error('Google Drive pull sync failed:', error)
 			throw error
 		}
 	}
 
-	// 4. Відправляємо локальні дані на Google Drive
 	public async pushToCloud(localData: any): Promise<void> {
 		try {
 			const token = await this.getAuthToken(true)
-			let fileId = await this.getFileId(token)
+			const fileId = await this.getFileId(token)
 
 			const metadata = {
 				name: this.FILENAME,
@@ -77,21 +74,20 @@ export class GDriveSyncService {
 			let method = 'POST'
 
 			if (fileId) {
-				// Якщо файл вже є, оновлюємо його
 				url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
 				method = 'PATCH'
 			}
 
 			const response = await fetch(url, {
-				method: method,
+				method,
 				headers: { Authorization: `Bearer ${token}` },
 				body: form,
 			})
 
-			if (!response.ok) throw new Error('Помилка збереження на GDrive')
-			console.log('Дані успішно збережено в хмару!')
+			if (!response.ok) throw new Error('Failed to save to Google Drive')
+			console.log('Data saved to Google Drive successfully')
 		} catch (error) {
-			console.error('Помилка Push-синхронізації:', error)
+			console.error('Google Drive push sync failed:', error)
 			throw error
 		}
 	}

@@ -1,3 +1,4 @@
+import Sortable from 'sortablejs'
 import { translations } from './translations'
 import { Chart, registerables, TooltipItem, ChartType } from 'chart.js'
 Chart.register(...registerables)
@@ -18,6 +19,7 @@ interface SyncData {
 	theme: string
 	language: string
 	timezone?: string
+	chartStyle?: string
 }
 
 interface SiteCategory {
@@ -28,7 +30,54 @@ interface CategoryColor {
 	[category: string]: string // category -> color
 }
 
+interface SiteTransition {
+	from: string
+	to: string
+	timestamp: number
+}
+
+interface ImportSummary {
+	statsAdded: number
+	statsUpdated: number
+	statsUnchanged: number
+	categoriesChanged: number
+	colorsChanged: number
+	transitionsAdded: number
+	skippedEntries: number
+}
+
+interface NormalizedImportData {
+	dailyStats: DailyStats
+	siteCategories: SiteCategory
+	categoryColors: CategoryColor
+	siteTransitions: SiteTransition[]
+	skippedEntries: number
+}
+
+interface ZenithBackup {
+	app: string
+	version: number
+	exportedAt: string
+	data: {
+		dailyStats: DailyStats
+		siteCategories: SiteCategory
+		categoryColors: CategoryColor
+		siteTransitions: SiteTransition[]
+		settings: {
+			language: string
+			timezone: string
+			chartStyle: string
+		}
+	}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+	const BACKUP_APP_ID = 'zenith-time-tracker'
+	const BACKUP_VERSION = 2
+	const MAX_IMPORTED_TRANSITIONS = 1000
+	const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+	const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i
+
 	let dailyStats: DailyStats = {}
 	let currentState: CurrentState = { isPaused: false }
 	let liveTimerInterval: number | null = null
@@ -42,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	let trendsChartInstance: Chart | null = null
 	let siteCategories: SiteCategory = {}
 	let currentTimezone = 'auto'
+	let currentChartStyle = 'line'
 	const defaultCategoryColors: CategoryColor = {
 		work: '#6366f1',
 		learning: '#f59e0b',
@@ -53,11 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	let categoryColors: CategoryColor = { ...defaultCategoryColors }
 
 	const LANGUAGES = [
-		{ id: 'ua', name: 'Українська' },
+		{ id: 'ua', name: 'Ukrainian' },
 		{ id: 'en', name: 'English' },
-		{ id: 'es', name: 'Español' },
+		{ id: 'es', name: 'Spanish' },
 		{ id: 'de', name: 'Deutsch' },
-		{ id: 'fr', name: 'Français' },
+		{ id: 'fr', name: 'French' },
 	]
 
 	const THEMES = [
@@ -79,9 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		periodSelect: document.getElementById('period-select') as HTMLSelectElement,
 		pauseButton: document.getElementById('pause-button') as HTMLButtonElement,
 		exportButton: document.getElementById('export-button') as HTMLButtonElement,
-		settingsButton: document.getElementById(
-			'settings-button',
-		) as HTMLButtonElement,
+		importButton: document.getElementById('import-button') as HTMLButtonElement,
+		importFile: document.getElementById('import-file') as HTMLInputElement,
+		settingsButton: document.getElementById('settings-button') as HTMLButtonElement,
+		ambientToggle: document.getElementById('ambient-toggle') as HTMLInputElement,
 		syncButton: document.getElementById('sync-button') as HTMLButtonElement,
 
 		langButton: document.getElementById('lang-button') as HTMLButtonElement,
@@ -136,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		saveSettingsBtn: document.getElementById(
 			'save-settings-btn',
 		) as HTMLButtonElement,
+		chartStyleSelect: document.getElementById(
+			'chart-style-select',
+		) as HTMLSelectElement,
 		timezoneSelect: document.getElementById(
 			'timezone-select',
 		) as HTMLSelectElement,
@@ -229,9 +283,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const saveSettings = () => {
 		currentTimezone = elements.timezoneSelect.value
-		chrome.storage.sync.set({ timezone: currentTimezone })
+		currentChartStyle = elements.chartStyleSelect.value
+		chrome.storage.sync.set({ timezone: currentTimezone, chartStyle: currentChartStyle })
+
+		const ambientEnabled = elements.ambientToggle.checked
+		chrome.storage.local.set({ ambientEnabled })
+		document.body.classList.toggle('no-ambient', !ambientEnabled)
 
 		closeSettingsModal()
+		updateDashboard()
 	}
 
 	const saveSiteCategories = () => {
@@ -256,16 +316,509 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+		typeof value === 'object' && value !== null && !Array.isArray(value)
+
+	const isValidDateKey = (dateKey: string): boolean => {
+		if (!DATE_KEY_PATTERN.test(dateKey)) return false
+		const [year, month, day] = dateKey.split('-').map(Number)
+		const date = new Date(Date.UTC(year, month - 1, day))
+		return (
+			date.getUTCFullYear() === year &&
+			date.getUTCMonth() === month - 1 &&
+			date.getUTCDate() === day
+		)
+	}
+
+	const normalizeHostname = (value: unknown): string | null => {
+		if (typeof value !== 'string') return null
+
+		let hostname = value.trim().toLowerCase()
+		if (!hostname) return null
+
+		if (/^https?:\/\//i.test(hostname)) {
+			try {
+				hostname = new URL(hostname).hostname
+			} catch {
+				return null
+			}
+		}
+
+		hostname = hostname
+			.replace(/^www\./, '')
+			.replace(/\/.*$/, '')
+			.replace(/:\d+$/, '')
+
+		if (
+			hostname.length === 0 ||
+			hostname.length > 253 ||
+			hostname.includes('..') ||
+			!/^[a-z0-9.-]+$/i.test(hostname)
+		) {
+			return null
+		}
+
+		return hostname
+	}
+
+	const normalizeSeconds = (value: unknown): number | null => {
+		const seconds =
+			typeof value === 'number'
+				? value
+				: typeof value === 'string' && value.trim()
+					? Number(value)
+					: Number.NaN
+
+		if (!Number.isFinite(seconds) || seconds <= 0) return null
+		const rounded = Math.round(seconds)
+		return rounded <= Number.MAX_SAFE_INTEGER ? rounded : null
+	}
+
+	const normalizeCategoryName = (value: unknown): string | null => {
+		if (typeof value !== 'string') return null
+		const category = value.trim().toLowerCase()
+		if (!category || category.length > 40) return null
+		return /^[a-z0-9 _-]+$/i.test(category) ? category : null
+	}
+
+	const normalizeTimestamp = (value: unknown): number | null => {
+		const rawTimestamp =
+			typeof value === 'number'
+				? value
+				: typeof value === 'string' && value.trim()
+					? Number(value)
+					: Number.NaN
+
+		if (!Number.isFinite(rawTimestamp) || rawTimestamp <= 0) return null
+		const timestamp =
+			rawTimestamp < 100_000_000_000 ? rawTimestamp * 1000 : rawTimestamp
+		return Math.round(timestamp)
+	}
+
+	const normalizeDailyStats = (
+		value: unknown,
+	): { dailyStats: DailyStats; skippedEntries: number } => {
+		const normalized: DailyStats = {}
+		let skippedEntries = 0
+
+		if (!isPlainRecord(value)) {
+			return { dailyStats: normalized, skippedEntries: 1 }
+		}
+
+		for (const [dateKey, rawHosts] of Object.entries(value)) {
+			if (!isValidDateKey(dateKey) || !isPlainRecord(rawHosts)) {
+				skippedEntries += 1
+				continue
+			}
+
+			for (const [rawHost, rawSeconds] of Object.entries(rawHosts)) {
+				const hostname = normalizeHostname(rawHost)
+				const seconds = normalizeSeconds(rawSeconds)
+
+				if (!hostname || seconds === null) {
+					skippedEntries += 1
+					continue
+				}
+
+				normalized[dateKey] = normalized[dateKey] || {}
+				normalized[dateKey][hostname] = Math.max(
+					normalized[dateKey][hostname] || 0,
+					seconds,
+				)
+			}
+		}
+
+		return { dailyStats: normalized, skippedEntries }
+	}
+
+	const normalizeSiteCategories = (
+		value: unknown,
+	): { siteCategories: SiteCategory; skippedEntries: number } => {
+		const normalized: SiteCategory = {}
+		let skippedEntries = 0
+
+		if (value === undefined) return { siteCategories: normalized, skippedEntries }
+		if (!isPlainRecord(value)) {
+			return { siteCategories: normalized, skippedEntries: 1 }
+		}
+
+		for (const [rawHost, rawCategory] of Object.entries(value)) {
+			const hostname = normalizeHostname(rawHost)
+			const category = normalizeCategoryName(rawCategory)
+
+			if (!hostname || !category) {
+				skippedEntries += 1
+				continue
+			}
+
+			normalized[hostname] = category
+		}
+
+		return { siteCategories: normalized, skippedEntries }
+	}
+
+	const normalizeCategoryColors = (
+		value: unknown,
+	): { categoryColors: CategoryColor; skippedEntries: number } => {
+		const normalized: CategoryColor = {}
+		let skippedEntries = 0
+
+		if (value === undefined) return { categoryColors: normalized, skippedEntries }
+		if (!isPlainRecord(value)) {
+			return { categoryColors: normalized, skippedEntries: 1 }
+		}
+
+		for (const [rawCategory, rawColor] of Object.entries(value)) {
+			const category = normalizeCategoryName(rawCategory)
+			const color = typeof rawColor === 'string' ? rawColor.trim() : ''
+
+			if (!category || !HEX_COLOR_PATTERN.test(color)) {
+				skippedEntries += 1
+				continue
+			}
+
+			normalized[category] = color.toLowerCase()
+		}
+
+		return { categoryColors: normalized, skippedEntries }
+	}
+
+	const normalizeSiteTransitions = (
+		value: unknown,
+	): { siteTransitions: SiteTransition[]; skippedEntries: number } => {
+		const normalized: SiteTransition[] = []
+		let skippedEntries = 0
+
+		if (value === undefined) return { siteTransitions: normalized, skippedEntries }
+		if (!Array.isArray(value)) {
+			return { siteTransitions: normalized, skippedEntries: 1 }
+		}
+
+		for (const item of value) {
+			if (!isPlainRecord(item)) {
+				skippedEntries += 1
+				continue
+			}
+
+			const from = normalizeHostname(item.from)
+			const to = normalizeHostname(item.to)
+			const timestamp = normalizeTimestamp(item.timestamp)
+
+			if (!from || !to || timestamp === null) {
+				skippedEntries += 1
+				continue
+			}
+
+			normalized.push({ from, to, timestamp })
+		}
+
+		return { siteTransitions: normalized, skippedEntries }
+	}
+
+	const getBackupPayload = (rawData: unknown): Record<string, unknown> => {
+		if (!isPlainRecord(rawData)) {
+			throw new Error('Backup must be a JSON object')
+		}
+
+		if (isPlainRecord(rawData.data)) {
+			return rawData.data
+		}
+
+		return rawData
+	}
+
+	const looksLikeLegacyStats = (value: Record<string, unknown>): boolean =>
+		Object.keys(value).some(key => isValidDateKey(key))
+
+	const parseImportData = (rawData: unknown): NormalizedImportData => {
+		const payload = getBackupPayload(rawData)
+		const statsSource = isPlainRecord(payload.dailyStats)
+			? payload.dailyStats
+			: looksLikeLegacyStats(payload)
+				? payload
+				: {}
+
+		const normalizedStats = normalizeDailyStats(statsSource)
+		const normalizedCategories = normalizeSiteCategories(payload.siteCategories)
+		const normalizedColors = normalizeCategoryColors(payload.categoryColors)
+		const normalizedTransitions = normalizeSiteTransitions(payload.siteTransitions)
+		const skippedEntries =
+			normalizedStats.skippedEntries +
+			normalizedCategories.skippedEntries +
+			normalizedColors.skippedEntries +
+			normalizedTransitions.skippedEntries
+
+		const recognizedEntries =
+			Object.keys(normalizedStats.dailyStats).length +
+			Object.keys(normalizedCategories.siteCategories).length +
+			Object.keys(normalizedColors.categoryColors).length +
+			normalizedTransitions.siteTransitions.length
+
+		if (recognizedEntries === 0) {
+			throw new Error('No readable Zenith data found in this file')
+		}
+
+		return {
+			dailyStats: normalizedStats.dailyStats,
+			siteCategories: normalizedCategories.siteCategories,
+			categoryColors: normalizedColors.categoryColors,
+			siteTransitions: normalizedTransitions.siteTransitions,
+			skippedEntries,
+		}
+	}
+
+	const mergeDailyStats = (
+		currentValue: unknown,
+		importedStats: DailyStats,
+	): {
+		dailyStats: DailyStats
+		added: number
+		updated: number
+		unchanged: number
+	} => {
+		const merged = normalizeDailyStats(currentValue).dailyStats
+		let added = 0
+		let updated = 0
+		let unchanged = 0
+
+		for (const [dateKey, hosts] of Object.entries(importedStats)) {
+			merged[dateKey] = merged[dateKey] || {}
+
+			for (const [hostname, seconds] of Object.entries(hosts)) {
+				const currentSeconds = merged[dateKey][hostname]
+
+				if (currentSeconds === undefined) {
+					merged[dateKey][hostname] = seconds
+					added += 1
+				} else if (seconds > currentSeconds) {
+					merged[dateKey][hostname] = seconds
+					updated += 1
+				} else {
+					unchanged += 1
+				}
+			}
+		}
+
+		return { dailyStats: merged, added, updated, unchanged }
+	}
+
+	const mergeStringMap = (
+		currentValue: unknown,
+		importedValue: Record<string, string>,
+		normalizer: (
+			value: unknown,
+		) => {
+			skippedEntries: number
+			siteCategories?: Record<string, string>
+			categoryColors?: Record<string, string>
+		},
+		mapKey: 'siteCategories' | 'categoryColors',
+	): { merged: Record<string, string>; changed: number } => {
+		const currentNormalized = normalizer(currentValue)[mapKey] || {}
+		const merged = { ...currentNormalized }
+		let changed = 0
+
+		for (const [key, value] of Object.entries(importedValue)) {
+			if (merged[key] !== value) {
+				merged[key] = value
+				changed += 1
+			}
+		}
+
+		return { merged, changed }
+	}
+
+	const getTransitionKey = (transition: SiteTransition): string =>
+		`${transition.timestamp}|${transition.from}|${transition.to}`
+
+	const mergeSiteTransitions = (
+		currentValue: unknown,
+		importedTransitions: SiteTransition[],
+	): { siteTransitions: SiteTransition[]; added: number } => {
+		const currentTransitions = normalizeSiteTransitions(currentValue).siteTransitions
+		const seen = new Set<string>()
+		const merged: SiteTransition[] = []
+		let added = 0
+
+		for (const transition of currentTransitions) {
+			const key = getTransitionKey(transition)
+			if (!seen.has(key)) {
+				seen.add(key)
+				merged.push(transition)
+			}
+		}
+
+		for (const transition of importedTransitions) {
+			const key = getTransitionKey(transition)
+			if (!seen.has(key)) {
+				seen.add(key)
+				merged.push(transition)
+				added += 1
+			}
+		}
+
+		merged.sort((a, b) => a.timestamp - b.timestamp)
+		return {
+			siteTransitions: merged.slice(-MAX_IMPORTED_TRANSITIONS),
+			added,
+		}
+	}
+
+	const flashButtonSuccess = (button: HTMLButtonElement) => {
+		const originalHtml = button.innerHTML
+		button.innerHTML =
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon-check"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+		window.setTimeout(() => {
+			button.innerHTML = originalHtml
+		}, 1600)
+	}
+
+	const getRuntimeExportData = async (): Promise<unknown> =>
+		new Promise(resolve => {
+			chrome.runtime.sendMessage({ type: 'EXPORT_DATA' }, response => {
+				if (chrome.runtime.lastError || !response?.success) {
+					resolve({})
+					return
+				}
+
+				resolve(response.data || {})
+			})
+		})
+
+	const buildExportBackup = async (): Promise<ZenithBackup> => {
+		const runtimeData = await getRuntimeExportData()
+		const runtimePayload = isPlainRecord(runtimeData)
+			? getBackupPayload(runtimeData)
+			: {}
+		const localData = await chrome.storage.local.get([
+			'dailyStats',
+			'siteCategories',
+			'categoryColors',
+			'siteTransitions',
+		])
+
+		const statsSource = isPlainRecord(runtimePayload.dailyStats)
+			? runtimePayload.dailyStats
+			: looksLikeLegacyStats(runtimePayload)
+				? runtimePayload
+				: localData.dailyStats
+		const transitionsSource = Array.isArray(runtimePayload.siteTransitions)
+			? runtimePayload.siteTransitions
+			: localData.siteTransitions
+
+		return {
+			app: BACKUP_APP_ID,
+			version: BACKUP_VERSION,
+			exportedAt: new Date().toISOString(),
+			data: {
+				dailyStats: normalizeDailyStats(statsSource).dailyStats,
+				siteCategories: normalizeSiteCategories(localData.siteCategories)
+					.siteCategories,
+				categoryColors: {
+					...defaultCategoryColors,
+					...normalizeCategoryColors(localData.categoryColors).categoryColors,
+				},
+				siteTransitions: normalizeSiteTransitions(transitionsSource)
+					.siteTransitions,
+				settings: {
+					language: currentLang,
+					timezone: currentTimezone,
+					chartStyle: currentChartStyle,
+				},
+			},
+		}
+	}
+
+	const downloadBackup = (backup: ZenithBackup) => {
+		const blob = new Blob([JSON.stringify(backup, null, 2)], {
+			type: 'application/json',
+		})
+		const url = URL.createObjectURL(blob)
+		const linkElement = document.createElement('a')
+		linkElement.href = url
+		linkElement.download = `zenith-backup-${new Date()
+			.toISOString()
+			.slice(0, 10)}.json`
+		document.body.appendChild(linkElement)
+		linkElement.click()
+		linkElement.remove()
+		window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+	}
+
+	const importBackup = async (file: File): Promise<ImportSummary> => {
+		const rawData = JSON.parse(await file.text()) as unknown
+		const importedData = parseImportData(rawData)
+		const currentData = await chrome.storage.local.get([
+			'dailyStats',
+			'siteCategories',
+			'categoryColors',
+			'siteTransitions',
+		])
+
+		const mergedStats = mergeDailyStats(
+			currentData.dailyStats,
+			importedData.dailyStats,
+		)
+		const mergedCategories = mergeStringMap(
+			currentData.siteCategories,
+			importedData.siteCategories,
+			normalizeSiteCategories,
+			'siteCategories',
+		)
+		const mergedColors = mergeStringMap(
+			currentData.categoryColors,
+			importedData.categoryColors,
+			normalizeCategoryColors,
+			'categoryColors',
+		)
+		const mergedTransitions = mergeSiteTransitions(
+			currentData.siteTransitions,
+			importedData.siteTransitions,
+		)
+
+		dailyStats = mergedStats.dailyStats
+		siteCategories = mergedCategories.merged
+		categoryColors = {
+			...defaultCategoryColors,
+			...mergedColors.merged,
+		}
+
+		await chrome.storage.local.set({
+			dailyStats,
+			siteCategories,
+			categoryColors,
+			siteTransitions: mergedTransitions.siteTransitions,
+		})
+
+		renderCategoryButtons()
+		renderCategoriesList()
+		updateDashboard()
+		renderActivityChart()
+		renderDistributionChart()
+		await renderFlowDiagram()
+		renderTrendsAnalysis()
+
+		return {
+			statsAdded: mergedStats.added,
+			statsUpdated: mergedStats.updated,
+			statsUnchanged: mergedStats.unchanged,
+			categoriesChanged: mergedCategories.changed,
+			colorsChanged: mergedColors.changed,
+			transitionsAdded: mergedTransitions.added,
+			skippedEntries: importedData.skippedEntries,
+		}
+	}
+
 	const getCategoryEmoji = (category: string): string => {
 		const emojis: { [key: string]: string } = {
-			work: '💼',
-			learning: '📚',
-			entertainment: '🎬',
-			social: '👥',
-			shopping: '🛍️',
-			other: '📌',
+			work: 'W',
+			learning: 'L',
+			entertainment: 'E',
+			social: 'S',
+			shopping: 'B',
+			other: 'O',
 		}
-		return emojis[category] || '📌'
+		return emojis[category] || category.charAt(0).toUpperCase() || 'O'
 	}
 
 	const renderCategoryButtons = () => {
@@ -365,7 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.categoriesList.innerHTML = ''
 		const categories: { [key: string]: string[] } = {}
 
-		// Групувати сайти за категоріями
+		// Group sites by category.
 		for (const [host, cat] of Object.entries(siteCategories)) {
 			if (!categories[cat]) categories[cat] = []
 			categories[cat].push(host.toLowerCase())
@@ -384,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			return
 		}
 
-		// Вивести кожну категорію
+		// Render each category in the configured order.
 		const orderedCategories = Object.keys(categoryColors)
 		for (const category of orderedCategories) {
 			const sites = categories[category]
@@ -518,17 +1071,92 @@ document.addEventListener('DOMContentLoaded', () => {
 		elements.categoriesModal.classList.remove('show')
 	}
 
+	const init3DEffects = () => {
+		// Mouse effects disabled by user request
+	}
+
+
+	const updateTimeOfDayTheme = () => {
+		const hour = new Date().getHours()
+		let blob1Color1, blob1Color2, blob2Color1, blob2Color2, blob3Color1, blob3Color2
+		let ambientOpacity = '0.65'
+
+		if (hour >= 6 && hour < 12) {
+			// Morning (warm light, soft blues/yellows)
+			blob1Color1 = 'rgba(255, 193, 7, 0.16)'
+			blob1Color2 = 'rgba(33, 150, 243, 0.08)'
+			blob2Color1 = 'rgba(255, 152, 0, 0.12)'
+			blob2Color2 = 'rgba(76, 175, 80, 0.06)'
+			blob3Color1 = 'rgba(33, 150, 243, 0.12)'
+			blob3Color2 = 'rgba(255, 193, 7, 0.06)'
+			ambientOpacity = '0.75'
+		} else if (hour >= 12 && hour < 18) {
+			// Afternoon (bright, vivid colors)
+			blob1Color1 = 'rgba(33, 150, 243, 0.16)'
+			blob1Color2 = 'rgba(156, 39, 176, 0.06)'
+			blob2Color1 = 'rgba(43, 196, 138, 0.12)'
+			blob2Color2 = 'rgba(33, 150, 243, 0.06)'
+			blob3Color1 = 'rgba(156, 39, 176, 0.12)'
+			blob3Color2 = 'rgba(43, 196, 138, 0.04)'
+		} else if (hour >= 18 && hour < 22) {
+			// Evening (purples, deep oranges)
+			blob1Color1 = 'rgba(156, 39, 176, 0.18)'
+			blob1Color2 = 'rgba(255, 87, 34, 0.08)'
+			blob2Color1 = 'rgba(103, 58, 183, 0.14)'
+			blob2Color2 = 'rgba(233, 30, 99, 0.08)'
+			blob3Color1 = 'rgba(255, 87, 34, 0.12)'
+			blob3Color2 = 'rgba(103, 58, 183, 0.06)'
+		} else {
+			// Night (deep blues, indigos)
+			blob1Color1 = 'rgba(10, 25, 47, 0.3)'
+			blob1Color2 = 'rgba(26, 35, 126, 0.15)'
+			blob2Color1 = 'rgba(49, 27, 146, 0.2)'
+			blob2Color2 = 'rgba(0, 0, 0, 0.1)'
+			blob3Color1 = 'rgba(26, 35, 126, 0.25)'
+			blob3Color2 = 'rgba(10, 25, 47, 0.1)'
+			ambientOpacity = '0.5'
+		}
+
+		const ambientBg = document.getElementById('ambient-bg')
+		if (ambientBg) {
+			ambientBg.style.opacity = ambientOpacity
+			const blob1 = ambientBg.querySelector('.blob-1') as HTMLElement
+			const blob2 = ambientBg.querySelector('.blob-2') as HTMLElement
+			const blob3 = ambientBg.querySelector('.blob-3') as HTMLElement
+			
+			if (blob1) blob1.style.background = `linear-gradient(135deg, ${blob1Color1}, ${blob1Color2})`
+			if (blob2) blob2.style.background = `linear-gradient(135deg, ${blob2Color1}, ${blob2Color2})`
+			if (blob3) blob3.style.background = `linear-gradient(135deg, ${blob3Color1}, ${blob3Color2})`
+		}
+	}
+
 	const init = async () => {
+		updateTimeOfDayTheme()
+		
+		// Setup Skeleton UI initially
+		elements.liveHostname.innerHTML = `<span class="skeleton-box" style="width: 150px; border-radius: 4px;"></span>`
+		elements.liveTimer.innerHTML = `<span class="skeleton-box" style="width: 120px; height: 38px; border-radius: 8px;"></span>`
+		elements.summaryTime.innerHTML = `<span class="skeleton-box" style="width: 140px; height: 38px; border-radius: 8px;"></span>`
+		elements.sitesListContainer.innerHTML = Array(5).fill(`<div class="site-entry" style="opacity: 0.5"><div class="skeleton-box" style="width: 24px; height: 24px; border-radius: 6px;"></div><div style="flex:1"><div class="skeleton-box" style="width: 60%; height: 16px; border-radius: 4px;"></div></div><div class="skeleton-box" style="width: 40px; height: 16px; border-radius: 4px;"></div></div>`).join('')
 		try {
 			const syncData = (await chrome.storage.sync.get({
 				theme: 'monolith',
 				language: 'en',
 				timezone: 'auto',
+				chartStyle: 'line',
 			})) as SyncData
 
 			// Set language immediately to avoid translation errors
 			currentLang = syncData.language || 'en'
 			currentTimezone = syncData.timezone || 'auto'
+			currentChartStyle = syncData.chartStyle || 'line'
+			if (elements.chartStyleSelect) elements.chartStyleSelect.value = currentChartStyle
+
+			const localData = await chrome.storage.local.get({ ambientEnabled: true })
+			const ambientEnabled = localData.ambientEnabled
+			elements.ambientToggle.checked = ambientEnabled
+			document.body.classList.toggle('no-ambient', !ambientEnabled)
+
 			await loadSiteCategories()
 			await loadCategoryColors()
 
@@ -590,11 +1218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		// Persist and update UI
-		chrome.storage.local.set({ dailyStats }, () => {
-			updateDashboard()
-			renderActivityChart()
-			renderDistributionChart()
-		})
+		chrome.storage.local.set({ dailyStats })
 	}
 
 	const setupUI = (syncData: SyncData) => {
@@ -604,6 +1228,77 @@ document.addEventListener('DOMContentLoaded', () => {
 		applyTheme(syncData.theme)
 		updateUsageDays()
 		setupFeedbackButton()
+		init3DEffects()
+
+		// === Unified Analytics Tab ===
+		try {
+			const analyticsContent = document.getElementById('analytics-content') as HTMLElement
+			if (analyticsContent) {
+				const originalContainers: { [key: string]: HTMLElement | null } = {
+					activity: document.getElementById('trend'),
+					distribution: document.getElementById('distribution'),
+					sites: document.getElementById('sites'),
+					transitions: document.getElementById('flow-diagram'),
+					trends: document.getElementById('trends-analysis'),
+				}
+
+				Object.keys(originalContainers).forEach(k => {
+					const el = originalContainers[k]
+					if (el) {
+						el.classList.remove('card')
+						el.style.background = 'transparent'
+						el.style.boxShadow = 'none'
+						el.style.border = 'none'
+						const titleWrapper = el.querySelector('.card-title-wrapper') as HTMLElement
+						if (titleWrapper) titleWrapper.style.display = 'none'
+						const header = el.querySelector('.card-header') as HTMLElement
+						if (header && k !== 'sites') {
+							header.style.display = 'none'
+						}
+						el.style.display = 'none'
+						analyticsContent.appendChild(el)
+					}
+				})
+
+				let currentView = ''
+				const switchView = (view: string) => {
+					if (!analyticsContent) return
+					if (currentView === view && currentView !== '') return
+
+					Object.keys(originalContainers).forEach(k => {
+						if (originalContainers[k]) {
+							originalContainers[k]!.style.display = 'none'
+						}
+					})
+
+					const target = originalContainers[view]
+					if (target) {
+						target.style.display = 'block'
+						if (view === 'activity') renderActivityChart()
+						if (view === 'distribution') renderDistributionChart()
+						if (view === 'transitions') renderFlowDiagram()
+						if (view === 'trends') renderTrendsAnalysis()
+						if (view === 'sites') renderSitesList(getRecordsForPeriod(new Date()))
+					}
+
+					document.querySelectorAll('#analytics .chart-views-toggle button').forEach(b => b.classList.remove('active'))
+					document.querySelector(`#analytics .chart-views-toggle button[data-view="${view}"]`)?.classList.add('active')
+					currentView = view
+				}
+
+				document.querySelectorAll('#analytics .chart-views-toggle button').forEach(b => {
+					b.addEventListener('click', (e) => {
+						e.preventDefault()
+						const view = (b as HTMLElement).dataset.view
+						switchView(view || 'activity')
+					})
+				})
+
+				switchView('activity')
+			}
+		} catch (e) {
+			console.error('Analytics tab init failed', e)
+		}
 
 		// Tab switching logic
 		document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -663,8 +1358,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				saveSiteCategories()
 				chrome.storage.local.set({ dailyStats }, () => {
-					updateDashboard()
-					renderActivityChart()
 					updateBulkActionsState()
 				})
 			}
@@ -705,17 +1398,47 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 		})
 
-		elements.exportButton.addEventListener('click', () => {
-			const dataStr = JSON.stringify(dailyStats, null, 2)
-			const dataUri =
-				'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-			const exportFileDefaultName = `zenith-stats-${new Date()
-				.toISOString()
-				.slice(0, 10)}.json`
-			const linkElement = document.createElement('a')
-			linkElement.setAttribute('href', dataUri)
-			linkElement.setAttribute('download', exportFileDefaultName)
-			linkElement.click()
+
+		elements.importButton?.addEventListener('click', () => {
+			elements.importFile.click()
+		})
+
+		elements.importFile?.addEventListener('change', async e => {
+			const input = e.target as HTMLInputElement
+			const file = input.files?.[0]
+			if (!file) return
+
+			elements.importButton.disabled = true
+
+			try {
+				const summary = await importBackup(file)
+				console.log('Import completed', summary)
+				flashButtonSuccess(elements.importButton)
+			} catch (err) {
+				console.error('Import failed', err)
+				showError('Failed to import data: invalid or unsupported backup file.')
+			} finally {
+				input.value = ''
+				elements.importButton.disabled = false
+			}
+		})
+
+		elements.exportButton.addEventListener('click', async () => {
+			elements.exportButton.disabled = true
+
+			try {
+				const backup = await buildExportBackup()
+				downloadBackup(backup)
+				dailyStats = backup.data.dailyStats
+				siteCategories = backup.data.siteCategories
+				categoryColors = backup.data.categoryColors
+				flashButtonSuccess(elements.exportButton)
+			} catch (err) {
+				console.error('Export failed', err)
+				showError('Failed to export data.')
+			} finally {
+				elements.exportButton.disabled = false
+			}
 		})
 
 		elements.chartDaily.addEventListener('click', () => setChartType('daily'))
@@ -805,37 +1528,36 @@ document.addEventListener('DOMContentLoaded', () => {
 		})
 
 		if (elements.syncButton) {
-			elements.syncButton.addEventListener('click', async () => {
-				const originalHtml = elements.syncButton.innerHTML
-				elements.syncButton.innerHTML =
-					'<span class="pulse" style="font-size:14px">⏳</span>'
-				elements.syncButton.disabled = true
+		elements.syncButton.addEventListener('click', async () => {
+			const svg = elements.syncButton.querySelector('svg');
+			if (svg) {
+				svg.classList.add('spin-animation');
+			}
+			elements.syncButton.disabled = true
 
-				try {
-					const response = await chrome.runtime.sendMessage({
-						action: 'syncWithDrive',
-					})
-					if (response && response.success) {
-						console.log('Sync success', response.result)
-						const svg = elements.syncButton.querySelector('svg')
-						if (svg) {
-							svg.style.stroke = 'var(--accent-green)'
-							setTimeout(() => (svg.style.stroke = 'currentColor'), 3000)
-						}
-					} else {
-						console.error('Sync error:', response?.error)
-						showError('Sync error: ' + (response?.error || 'Unknown'))
-					}
-				} catch (error) {
-					console.error('Sync failed', error)
-					showError('Синхронізація не вдалася. Перевірте Google авторизацію.')
-				} finally {
-					elements.syncButton.innerHTML = originalHtml
-					elements.syncButton.disabled = false
+			try {
+				const response = await chrome.runtime.sendMessage({
+					action: 'syncWithDrive',
+				})
+				if (response && response.success) {
+					console.log('Sync success', response.result)
+					const originalHtml = elements.syncButton.innerHTML;
+					elements.syncButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon-check"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+					setTimeout(() => {
+						elements.syncButton.innerHTML = originalHtml;
+					}, 2500);
+				} else {
+					showError('Sync error: ' + (response?.error || 'Unknown'))
+					if (svg) svg.classList.remove('spin-animation');
 				}
-			})
-		}
-
+			} catch (error) {
+				showError('Sync failed')
+				if (svg) svg.classList.remove('spin-animation');
+			} finally {
+				elements.syncButton.disabled = false
+			}
+		})
+	}
 		document.addEventListener('click', e => {
 			const target = e.target as Node
 			if (
@@ -1040,7 +1762,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				translations[currentLang].noComparison
 		} else {
 			const percentageChange = ((totalTime - prevTime) / prevTime) * 100
-			const trend = percentageChange >= 0 ? '↑' : '↓'
+			const trend = percentageChange >= 0 ? '+' : '-'
 			const trendClass = percentageChange >= 0 ? 'trend-up' : 'trend-down'
 
 			elements.comparisonInsight.innerHTML = `<span class="${trendClass}">${trend}${Math.abs(
@@ -1148,18 +1870,29 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="site-category-btn" data-host="${host}" title="${
 								translations[currentLang]?.addToCategory || 'Add to category'
 							}">
-                📁
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
               </button>
               <button class="site-delete-btn" data-host="${host}" title="${
-									translations[currentLang]?.deleteSite || 'Delete site'
-								}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+								translations[currentLang]?.deleteSite || 'Delete site'
+							}" style="background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.4); font-size: 14px; padding: 0 5px; transition: all 0.2s;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
               </button>
               <div class="site-progress-bar"><div class="site-progress-fill" style="width: ${percentage}%"></div></div>
             </div>`
 							})
 							.join('')
 					: `<p class="placeholder">${translations[currentLang].statusNoData}</p>`
+
+			// Initialize SortableJS
+			if (Sortable) {
+				new Sortable(elements.sitesListContainer, {
+					animation: 150,
+					ghostClass: 'sortable-ghost',
+					dragClass: 'sortable-drag',
+					delay: 100, // Requires holding for 100ms before dragging starts
+					delayOnTouchOnly: true
+				});
+			}
 
 			// Re-attach event listeners
 			document.querySelectorAll('.site-checkbox').forEach(cb => {
@@ -1189,6 +1922,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			document.querySelectorAll('.site-delete-btn').forEach(btn => {
 				const btnElement = btn as HTMLElement
+				btnElement.addEventListener('mouseenter', () => {
+					btnElement.style.background = 'rgba(255,68,68,0.1)'
+					btnElement.style.color = '#ff4444'
+				})
+				btnElement.addEventListener('mouseleave', () => {
+					btnElement.style.background = 'none'
+					btnElement.style.color = 'rgba(255,255,255,0.4)'
+				})
 				btnElement.addEventListener('click', (e: Event) => {
 					e.stopPropagation()
 					const host = btnElement.getAttribute('data-host')
@@ -1214,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		if (isPaused) {
 			elements.liveHostname.textContent = translations[currentLang].statusPaused
-			elements.liveTimer.textContent = '—'
+			elements.liveTimer.textContent = '--'
 			elements.liveFavicon.src = ''
 			elements.liveFavicon.style.display = 'none'
 			return
@@ -1254,7 +1995,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			liveTimerInterval = setInterval(update, 1000)
 		} else {
 			elements.liveHostname.textContent = translations[currentLang].statusNoTab
-			elements.liveTimer.textContent = '—'
+			elements.liveTimer.textContent = '--'
 			elements.liveFavicon.src = ''
 			elements.liveFavicon.style.display = 'none'
 		}
@@ -1279,7 +2020,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		document.querySelectorAll('[data-i18n-key-title]').forEach(el => {
 			const key = el.getAttribute('data-i18n-key-title')
 			if (key && translations[lang]?.[key]) {
-				;(el as HTMLElement).title = translations[lang][key]
+				;(el as HTMLElement).setAttribute('data-title', translations[lang][key]);
 			}
 		})
 
@@ -1484,8 +2225,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			getComputedStyle(document.body).getPropertyValue('--glass-bg').trim() ||
 			'rgba(20, 20, 20, 0.6)'
 
+		const isLine = currentChartStyle === 'line'
+
 		activityChartInstance = new Chart(ctx, {
-			type: 'bar',
+			type: isLine ? 'line' : 'bar',
 			data: {
 				labels: labels,
 				datasets: [
@@ -1494,9 +2237,19 @@ document.addEventListener('DOMContentLoaded', () => {
 						data: dataInHours,
 						backgroundColor: gradient,
 						borderColor: accentColor,
-						borderWidth: 2,
-						borderRadius: 6,
-						borderSkipped: false,
+						borderWidth: isLine ? 3 : 2,
+						...(isLine ? {
+							fill: true,
+							tension: 0.4,
+							pointBackgroundColor: textPrimary,
+							pointBorderColor: accentColor,
+							pointBorderWidth: 2,
+							pointRadius: 0,
+							pointHoverRadius: 6,
+						} : {
+							borderRadius: 6,
+							borderSkipped: false,
+						}),
 					},
 				],
 			},
@@ -1751,7 +2504,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	// Кнопка "Залишити відгук" (тимчасово alert)
+	// Feedback button placeholder until the real feedback flow is wired.
 	function setupFeedbackButton() {
 		const btn = document.getElementById('feedback-btn')
 		if (btn) {
@@ -1806,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						<div style="margin-bottom: 16px; padding: 12px; background: var(--surface-hover); border-radius: 8px;">
 							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
 								<span style="font-size: 13px; color: var(--text-main); font-weight: 600;">
-									${formatHostname(t.from)} → ${formatHostname(t.to)}
+									${formatHostname(t.from)} -&gt; ${formatHostname(t.to)}
 								</span>
 								<span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">
 									${t.count} times
@@ -1902,7 +2655,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				.map(insight => {
 					const isIncrease = insight.changePercent > 0
 					const isDecrease = insight.changePercent < 0
-					const arrow = isIncrease ? '▲' : isDecrease ? '▼' : '●'
+					const arrow = isIncrease ? '+' : isDecrease ? '-' : '='
 					const color = isIncrease
 						? 'var(--warning)'
 						: isDecrease

@@ -9,6 +9,11 @@
 		<script src="lib/chartjs-adapter-date-fns.bundle.min.js"></script>
 	</head>
 	<body>
+		<div id="ambient-bg" class="ambient-bg" aria-hidden="true">
+			<div class="blob blob-1"></div>
+			<div class="blob blob-2"></div>
+			<div class="blob blob-3"></div>
+		</div>
 		<div class="glass-effect"></div>
 
 		<div class="container">
@@ -24,9 +29,23 @@
 						<option value="year" data-i18n-key="periodYear">Year</option>
 					</select>
 
+					<input type="file" id="import-file" accept=".json" style="display: none;" />
+
+					<button
+						id="import-button"
+						data-title="Import data"
+						class="btn-icon tooltip-trigger"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-upload">
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="17 8 12 3 7 8" />
+							<line x1="12" y1="3" x2="12" y2="15" />
+						</svg>
+					</button>
+
 					<button
 						id="export-button"
-						title="Export data (CSV)"
+						data-title="Export data"
 						class="btn-icon tooltip-trigger"
 					>
 						<svg
@@ -47,8 +66,8 @@
 
 					<button
 						id="lang-button"
-						title="Language (EN/UA/ES/DE/FR)"
-						class="tooltip-trigger"
+						data-title="Language (EN/UA/ES/DE/FR)"
+						class="btn-icon"
 					>
 						EN
 					</button>
@@ -57,7 +76,7 @@
 					<button
 						id="theme-button"
 						data-i18n-key-title="tooltipTheme"
-						title="Switch theme"
+						data-title="Switch theme"
 						class="btn-icon tooltip-trigger"
 					>
 						<svg
@@ -78,7 +97,7 @@
 					<button
 						id="categories-button"
 						data-i18n-key-title="tooltipCategories"
-						title="Manage website categories"
+						data-title="Manage website categories"
 						class="btn-icon tooltip-trigger relative-container"
 					>
 						<svg
@@ -101,7 +120,7 @@
 
 					<button
 						id="sync-button"
-						title="Sync with Google Drive"
+						data-title="Sync with Google Drive"
 						class="btn-icon tooltip-trigger"
 					>
 						<svg
@@ -122,7 +141,7 @@
 
 					<button
 						id="settings-button"
-						title="Settings"
+						data-title="Settings"
 						class="btn-icon tooltip-trigger"
 					>
 						<svg
@@ -145,7 +164,7 @@
 					<button
 						id="pause-button"
 						data-i18n-key-title="tooltipPause"
-						title="Pause/Resume tracking"
+						data-title="Pause/Resume tracking"
 						class="btn-icon tooltip-trigger"
 					>
 						<svg
@@ -235,13 +254,58 @@
 						<h3 id="summary-title"></h3>
 						<h2 id="summary-time">00:00:00</h2>
 						<p id="comparison-insight">...</p>
-						<div class="productivity-section" id="productivity-score-container">
-							<div class="productivity-header">
-								<span class="productivity-label" data-i18n-key="productivityScore">Productivity Score</span>
-								<span id="productivity-score-value" class="productivity-value">0%</span>
+						<div
+							id="productivity-score-container"
+							style="
+								margin-top: 12px;
+								padding-top: 12px;
+								border-top: 1px solid var(--border);
+							"
+						>
+							<div
+								style="
+									display: flex;
+									justify-content: space-between;
+									align-items: center;
+									margin-bottom: 4px;
+								"
+							>
+								<span
+									style="
+										font-size: 12px;
+										font-weight: 500;
+										color: var(--text-muted);
+									"
+									data-i18n-key="productivityScore"
+									>Productivity Score</span
+								>
+								<span
+									id="productivity-score-value"
+									style="
+										font-size: 14px;
+										font-weight: 700;
+										color: var(--text-main);
+									"
+									>0%</span
+								>
 							</div>
-							<div class="productivity-bar-container">
-								<div id="productivity-bar" class="productivity-bar-fill"></div>
+							<div
+								style="
+									height: 6px;
+									background: var(--surface-hover);
+									border-radius: 3px;
+									overflow: hidden;
+								"
+							>
+								<div
+									id="productivity-bar"
+									style="
+										height: 100%;
+										width: 0%;
+										background: var(--success);
+										transition: width 0.5s ease;
+									"
+								></div>
 							</div>
 						</div>
 					</div>
@@ -346,15 +410,26 @@
 				</div>
 			</div>
 
-			<div class="tabs-navigation">
-				<button class="nav-tab active" data-target="trend" data-i18n-key="tabTrend">Trend</button>
-				<button class="nav-tab" data-target="distribution" data-i18n-key="tabDistribution">Distribution</button>
-				<button class="nav-tab" data-target="flow-diagram" data-i18n-key="tabFlow">Flow</button>
-				<button class="nav-tab" data-target="trends-analysis" data-i18n-key="tabInsights">Insights</button>
+			<div id="analytics" class="card" style="grid-column: 1 / -1;">
+				<div class="card-header" style="justify-content: space-between;">
+					<div class="card-title-wrapper">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-icon"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+						<h3 class="card-title" data-i18n-key="cardTitleAnalytics">Analytics</h3>
+					</div>
+					<div class="chart-views-toggle chart-toggle" style="margin:0;">
+						<button data-view="activity" class="active">Activity</button>
+						<button data-view="distribution">Dist</button>
+						<button data-view="transitions">Flow</button>
+						<button data-view="trends">Trends</button>
+						<button data-view="sites">Sites</button>
+					</div>
+				</div>
+				<div class="card-content" id="analytics-content" style="min-height: 250px;">
+					<!-- dynamic content -->
+				</div>
 			</div>
 
-			<div class="tab-content-container">
-				<div id="trend" class="card tab-pane active">
+			<div id="trend" class="card">
 				<div class="card-header">
 					<div class="card-title-wrapper">
 						<svg
@@ -392,7 +467,7 @@
 				</div>
 			</div>
 
-			<div id="distribution" class="card tab-pane">
+			<div id="distribution" class="card">
 				<div class="card-header">
 					<div class="card-title-wrapper">
 						<svg
@@ -431,7 +506,7 @@
 			</div>
 
 			<!-- Flow Diagram -->
-			<div id="flow-diagram" class="card tab-pane">
+			<div id="flow-diagram" class="card">
 				<div class="card-header">
 					<div class="card-title-wrapper">
 						<svg
@@ -471,7 +546,7 @@
 			</div>
 
 			<!-- Trends Analysis -->
-			<div id="trends-analysis" class="card tab-pane">
+			<div id="trends-analysis" class="card">
 				<div class="card-header">
 					<div class="card-title-wrapper">
 						<svg
@@ -505,8 +580,6 @@
 					</div>
 				</div>
 			</div>
-			</div>
-
 		</div>
 
 		<div id="settings-modal" class="modal">
@@ -516,6 +589,20 @@
 					<button class="modal-close">&times;</button>
 				</div>
 				<div class="modal-body">
+					<div class="settings-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+						<label for="ambient-toggle" data-i18n-key="settingAmbient">Visual Effects (Animations & 3D)</label>
+						<label class="toggle-switch">
+							<input type="checkbox" id="ambient-toggle" checked>
+							<span class="slider"></span>
+						</label>
+					</div>
+					<div class="settings-group">
+						<label for="chart-style-select" data-i18n-key="settingChartStyle">Chart Style</label>
+						<select id="chart-style-select" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-primary); margin-bottom: 15px;">
+							<option value="line" data-i18n-key="chartStyleLine">Wave (Area)</option>
+							<option value="bar" data-i18n-key="chartStyleBar">Columns (Bar)</option>
+						</select>
+					</div>
 					<div class="settings-group">
 						<label for="timezone-select" data-i18n-key="timezone"
 							>Timezone</label
@@ -609,7 +696,25 @@
 								margin-bottom: 8px;
 							"
 						>
-							<span style="font-size: 18px">🏷️</span>
+							<span style="display: inline-flex; color: var(--accent)">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path
+										d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"
+									/>
+									<line x1="7" y1="7" x2="7.01" y2="7" />
+								</svg>
+							</span>
 							<strong style="font-size: 13px" data-i18n-key="siteCategories"
 								>Site Categories</strong
 							>
@@ -734,7 +839,7 @@
 								id="new-category-color"
 								value="#6366f1"
 								class="color-input"
-								title="Color"
+								data-title="Color"
 							/>
 							<button
 								id="create-category-btn"

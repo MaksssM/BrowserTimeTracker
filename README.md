@@ -1,178 +1,133 @@
-# 🕒 Browser Time Tracker
+# Zenith Dashboard Pro
 
-**Zenith Dashboard Pro** - потужне розширення для Chrome/Edge, яке відстежує час, проведений на веб-сайтах, та надає детальну аналітику вашої онлайн-активності.
+Zenith Dashboard Pro is a Manifest V3 browser extension for tracking time spent on websites and reviewing that activity in a compact analytics dashboard.
 
----
+The project is built with TypeScript and Vite. Data is stored locally by default, JSON backup import/export is supported, and the main statistics can optionally be synced through Google Drive `appDataFolder` after the user authorizes access.
 
-## ✨ Основні можливості
+## Features
 
-### 📊 **Детальна статистика**
+- Tracks the active tab and accumulates time by hostname.
+- Shows a live current-session timer in the popup.
+- Provides summaries for today, week, month, and year.
+- Includes analytics views for activity, distribution, sites, transitions, and trends.
+- Supports site categories with custom colors.
+- Supports bulk actions for selected sites.
+- Includes pause and resume tracking.
+- Sends reminders after long activity on the same site.
+- Supports multiple UI themes and interface languages.
+- Exports a versioned JSON backup.
+- Imports the current backup format and older `dailyStats`-only files.
+- Makes repeated imports safe: time is not duplicated and transitions are deduplicated.
+- Supports Google Drive sync through Chrome Identity and Drive `appDataFolder`.
 
-- **Live трекінг** - відстеження поточної активності в реальному часі
-- **Загальна статистика** - підсумковий час за обраний період (день/тиждень/місяць/рік)
-- **Порівняльний аналіз** - автоматичне порівняння з попереднім періодом з процентною зміною
+## Data Model
 
-### 🌐 **Топ сайти**
+Main `chrome.storage.local` keys:
 
-- Рейтинг найбільш відвідуваних сайтів
-- Пошук по сайтах
-- Фільтрація за періодами (день, тиждень, місяць, рік)
-- Групове управління сайтами
+- `dailyStats`: time by date and hostname, in seconds.
+- `siteCategories`: hostname-to-category mapping.
+- `categoryColors`: category-to-color mapping.
+- `siteTransitions`: recent transitions between hostnames.
+- `isPaused`: tracking pause state.
+- `lastProcessedDate`: day rollover marker.
+- `reminderThreshold`: long-session reminder threshold in milliseconds.
 
-### 📈 **Візуалізації**
+Current exports use this versioned backup format:
 
-#### 1️⃣ **Графік активності**
-
-Інтерактивний графік з відображенням часу за різні періоди:
-
-- **Денний** - останні 7 днів
-- **Тижневий** - останні 8 тижнів
-- **Місячний** - останні 6 місяців
-- **Річний** - останні 5 років
-
-#### 2️⃣ **Розподіл часу**
-
-Doughnut-чарт з топ-5 сайтами та їх відносним часом використання
-
-#### 3️⃣ **Flow-діаграма переходів**
-
-Візуалізація найпоширеніших шляхів переходів між сайтами
-
-#### 4️⃣ **Теплова карта активності**
-
-Bubble-чарт з відображенням активності по годинах та днях тижня
-
-#### 5️⃣ **Трендовий аналіз**
-
-Порівняння активності поточного тижня з попереднім за категоріями з автоматичними інсайтами
-
-### 🏷️ **Категорії сайтів**
-
-- Категоризація сайтів (Робота, Навчання, Розваги, Соціальні мережі, Покупки, Інше)
-- Створення власних категорій з кастомними кольорами
-- Автоматичний підрахунок Score продуктивності
-- Групова зміна категорій для кількох сайтів
-
-### 🎨 **Теми оформлення**
-
-12 унікальних тем на вибір:
-
-- 🌑 Monolith (темна)
-- ❄️ Nord (північна)
-- 🍵 Matcha (зелена)
-- ☀️ Solar (сонячна)
-- 🌃 Cyberpunk (неонова)
-- 🧛 Dracula (фіолетова)
-- ☕ Latte (світла)
-- 🍂 Coffee (коричнева)
-- 🌊 Ocean (океанська)
-- 🌲 Forest (лісова)
-- 🌅 Sunset (захід сонця)
-- 🌌 Nebula (космічна)
-
-### 🌍 **Мультимовність**
-
-Підтримка 5 мов:
-
-- 🇺🇦 Українська
-- 🇬🇧 English
-- 🇪🇸 Español
-- 🇩🇪 Deutsch
-- 🇫🇷 Français
-
-### ⚙️ **Налаштування**
-
-- **Пауза трекінгу** - тимчасова зупинка відстеження
-- **Експорт даних** - збереження статистики у CSV форматі
-- **Очищення даних** - видалення всієї історії
-- **Нагадування** - сповіщення при тривалій активності на одному сайті (налаштовується)
-- **Часові пояси** - підтримка різних часових поясів
-- **Автоматичне очищення** - видалення даних старше 90 днів
-
-### 📱 **Зручний інтерфейс**
-
-- Адаптивний дизайн
-- Анімації та плавні переходи
-- Glass-morphism ефекти
-- Інтуїтивна навігація
-
----
-
-## 🚀 Встановлення
-
-### Для розробників
-
-1. **Клонуйте репозиторій:**
-
-```bash
-git clone https://github.com/MaksssM/BrowserTimeTracke.git
-cd BrowserTimeTracke
+```json
+{
+  "app": "zenith-time-tracker",
+  "version": 2,
+  "exportedAt": "2026-05-27T00:00:00.000Z",
+  "data": {
+    "dailyStats": {},
+    "siteCategories": {},
+    "categoryColors": {},
+    "siteTransitions": [],
+    "settings": {
+      "language": "en",
+      "timezone": "auto",
+      "chartStyle": "line"
+    }
+  }
+}
 ```
 
-2. **Встановіть залежності:**
+Repeated imports of the same backup are designed to be safe. For each date and hostname pair, the larger time value is kept, and site transitions are deduplicated.
+
+## Development
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. **Зберіть проект:**
+Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+Build the extension:
 
 ```bash
 npm run build
 ```
 
-4. **Завантажте в браузер:**
-   - Відкрийте Chrome/Edge
-   - Перейдіть до `chrome://extensions/`
-   - Увімкніть "Режим розробника"
-   - Натисніть "Завантажити розпаковане розширення"
-   - Виберіть папку `dist`
+Production files are generated in `dist/`.
 
-### Для користувачів
+## Load In Chrome Or Edge
 
-_(Після публікації в Chrome Web Store)_
-Встановіть розширення з [Chrome Web Store](#) одним кліком.
+1. Run `npm run build`.
+2. Open `chrome://extensions` or `edge://extensions`.
+3. Enable Developer mode.
+4. Click Load unpacked.
+5. Select the generated `dist/` folder.
 
----
+After every source change and rebuild, reload the unpacked extension on the browser extensions page so the browser uses the latest files from `dist`.
 
-## 🛠️ Технології
+## Project Structure
 
-- **TypeScript** - типізована розробка
-- **Vite** - швидка збірка
-- **Chart.js** - інтерактивні графіки
-- **Chrome Extensions API** - інтеграція з браузером
-- **date-fns** - робота з датами
-- **CSS Variables** - динамічні теми
+```text
+src/
+  background.ts      Service worker for tracking, storage, and messages
+  gdrive-sync.ts     Google Drive appDataFolder sync service
+  popup.ts           Popup UI, analytics, import/export, categories, settings
+  translations.ts    Interface translations
+public/
+  manifest.json      Extension manifest
+  popup.html         Popup markup
+  style.css          Popup styles
+vite.config.ts       Vite configuration
+```
 
----
+## Scripts
 
-## 🎯 Як це працює
+- `npm run dev`: start Vite in development mode.
+- `npm run build`: build the extension into `dist/`.
+- `npm run preview`: preview the Vite build.
 
-1. **Відстеження** - розширення відслідковує активну вкладку кожні 15 секунд
-2. **Збереження** - дані зберігаються локально у `chrome.storage.local`
-3. **Аналіз** - статистика групується по днях, категоріях і сайтах
-4. **Візуалізація** - Chart.js рендерить інтерактивні графіки
-5. **Оновлення** - live таймер оновлюється щосекунди
+## Permissions
 
----
+The extension currently requests:
 
-## 🔐 Приватність
+- `tabs`: read the active tab URL to determine the hostname.
+- `storage`: store statistics, settings, categories, and sync state.
+- `alarms`: support background scheduling.
+- `contextMenus`: add the current page to a category from the browser menu.
+- `identity`: authorize optional Google Drive sync.
 
-- ✅ Всі дані зберігаються **локально** на вашому пристрої
-- ✅ **Немає відправки даних** на зовнішні сервери
-- ✅ **Повний контроль** над вашими даними
-- ✅ Можливість **експорту та видалення** в будь-який момент
+Google Drive sync uses this scope:
 
----
+```text
+https://www.googleapis.com/auth/drive.appdata
+```
 
-## 📮 Зворотній зв'язок
+This scope limits access to the extension's hidden app data folder in Google Drive.
 
-Знайшли баг або маєте ідею? [Створіть Issue](https://github.com/MaksssM/BrowserTimeTracke/issues)
+## Privacy
 
----
+Data stays local unless the user explicitly starts Google Drive sync. The extension stores hostnames and time totals, not page contents.
 
-## ⭐ Подобається проект?
-
-Поставте зірку на GitHub! Це мотивує нас розвивати проект далі.
-
----
+JSON backups can contain hostnames, category names, category colors, transitions, and usage totals. Treat backup files as private data.
