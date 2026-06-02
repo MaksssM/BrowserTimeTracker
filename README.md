@@ -1,133 +1,28 @@
-# Zenith Dashboard Pro
+﻿# Browser Time Tracker (Zenith Dashboard Pro)
 
-Zenith Dashboard Pro is a Manifest V3 browser extension for tracking time spent on websites and reviewing that activity in a compact analytics dashboard.
+Browser Time Tracker is a sleek, privacy-focused browser extension designed to help you understand and manage your digital life. It silently monitors your active tab usage and transforms that data into beautiful, insightful analytics directly in your browser.
 
-The project is built with TypeScript and Vite. Data is stored locally by default, JSON backup import/export is supported, and the main statistics can optionally be synced through Google Drive `appDataFolder` after the user authorizes access.
+## 🌟 Overview
 
-## Features
+In a world full of digital distractions, it can be hard to realize how much time we spend on different websites. This extension provides a clear, categorized view of your browsing habits. Whether you're tracking productivity, trying to limit social media, or just curious about your daily internet usage, Browser Time Tracker gives you the control and insights you need without compromising your privacy.
 
-- Tracks the active tab and accumulates time by hostname.
-- Shows a live current-session timer in the popup.
-- Provides summaries for today, week, month, and year.
-- Includes analytics views for activity, distribution, sites, transitions, and trends.
-- Supports site categories with custom colors.
-- Supports bulk actions for selected sites.
-- Includes pause and resume tracking.
-- Sends reminders after long activity on the same site.
-- Supports multiple UI themes and interface languages.
-- Exports a versioned JSON backup.
-- Imports the current backup format and older `dailyStats`-only files.
-- Makes repeated imports safe: time is not duplicated and transitions are deduplicated.
-- Supports Google Drive sync through Chrome Identity and Drive `appDataFolder`.
+## ✨ Key Features
 
-## Data Model
+- **Intuitive Dashboard:** A beautifully designed interface that displays daily, weekly, monthly, and yearly browsing statistics.
+- **Advanced Analytics:** Interactive charts showcasing your time distribution, top visited sites, and browsing flow.
+- **Categorization:** Group websites into customized categories (e.g., Work, Entertainment, Learning) with custom colors to instantly see where your time goes.
+- **Multilingual Support:** Fully translated interface supporting multiple languages (English, Ukrainian, Spanish, German, French).
+- **Deep Personalization:** Choose from a wide variety of beautifully crafted visual themes (Nord, Cyberpunk, Matcha, Sunset, Dracula, and more) to match your mood.
+- **Cloud & Local Backups:** Keep your data safe with manual JSON Imports/Exports or seamless synchronization with Google Drive.
+- **Flexible Control:** Need a break? Instantly pause and resume tracking with a single click right from the top menu.
 
-Main `chrome.storage.local` keys:
+## 🔒 Privacy First
 
-- `dailyStats`: time by date and hostname, in seconds.
-- `siteCategories`: hostname-to-category mapping.
-- `categoryColors`: category-to-color mapping.
-- `siteTransitions`: recent transitions between hostnames.
-- `isPaused`: tracking pause state.
-- `lastProcessedDate`: day rollover marker.
-- `reminderThreshold`: long-session reminder threshold in milliseconds.
+Your data belongs exclusively to you. Browser Time Tracker is built on a **local-first** approach:
+- All tracking data, browsing history, and settings are stored locally on your device.
+- We do not track page content, keystrokes, or personal information. 
+- Cloud backup is 100% opt-in via Google Drive.
 
-Current exports use this versioned backup format:
+## 🎯 Value & Impact
 
-```json
-{
-  "app": "zenith-time-tracker",
-  "version": 2,
-  "exportedAt": "2026-05-27T00:00:00.000Z",
-  "data": {
-    "dailyStats": {},
-    "siteCategories": {},
-    "categoryColors": {},
-    "siteTransitions": [],
-    "settings": {
-      "language": "en",
-      "timezone": "auto",
-      "chartStyle": "line"
-    }
-  }
-}
-```
-
-Repeated imports of the same backup are designed to be safe. For each date and hostname pair, the larger time value is kept, and site transitions are deduplicated.
-
-## Development
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start the Vite development server:
-
-```bash
-npm run dev
-```
-
-Build the extension:
-
-```bash
-npm run build
-```
-
-Production files are generated in `dist/`.
-
-## Load In Chrome Or Edge
-
-1. Run `npm run build`.
-2. Open `chrome://extensions` or `edge://extensions`.
-3. Enable Developer mode.
-4. Click Load unpacked.
-5. Select the generated `dist/` folder.
-
-After every source change and rebuild, reload the unpacked extension on the browser extensions page so the browser uses the latest files from `dist`.
-
-## Project Structure
-
-```text
-src/
-  background.ts      Service worker for tracking, storage, and messages
-  gdrive-sync.ts     Google Drive appDataFolder sync service
-  popup.ts           Popup UI, analytics, import/export, categories, settings
-  translations.ts    Interface translations
-public/
-  manifest.json      Extension manifest
-  popup.html         Popup markup
-  style.css          Popup styles
-vite.config.ts       Vite configuration
-```
-
-## Scripts
-
-- `npm run dev`: start Vite in development mode.
-- `npm run build`: build the extension into `dist/`.
-- `npm run preview`: preview the Vite build.
-
-## Permissions
-
-The extension currently requests:
-
-- `tabs`: read the active tab URL to determine the hostname.
-- `storage`: store statistics, settings, categories, and sync state.
-- `alarms`: support background scheduling.
-- `contextMenus`: add the current page to a category from the browser menu.
-- `identity`: authorize optional Google Drive sync.
-
-Google Drive sync uses this scope:
-
-```text
-https://www.googleapis.com/auth/drive.appdata
-```
-
-This scope limits access to the extension's hidden app data folder in Google Drive.
-
-## Privacy
-
-Data stays local unless the user explicitly starts Google Drive sync. The extension stores hostnames and time totals, not page contents.
-
-JSON backups can contain hostnames, category names, category colors, transitions, and usage totals. Treat backup files as private data.
+Data visualization doesn't have to be boring. With a fast, responsive, and highly customizable UI, you can visually identify time sinks, improve your focus, and make conscious decisions about your web habits—all while enjoying a premium user experience.
